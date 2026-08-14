@@ -11,6 +11,7 @@ import '../features/learning/presentation/screens/skill_gap_screen.dart';
 import '../features/notifications/notifications_page.dart';
 import '../features/profile/profile_page.dart';
 import '../features/resumes/resumes_page.dart';
+import 'injector.dart';
 
 abstract final class AppRouter {
   static const home = '/';
@@ -79,11 +80,11 @@ class _AppShellState extends State<AppShell> {
     ),
   ];
 
-  static const _screens = [
-    CommunityScreen(),
-    AiChatScreen(),
-    SkillGapScreen(),
-    LearningResourcesScreen(),
+  late final List<Widget> _screens = [
+    CommunityScreen(repository: Injector.communityRepository()),
+    const AiChatScreen(),
+    const SkillGapScreen(),
+    const LearningResourcesScreen(),
   ];
 
   @override

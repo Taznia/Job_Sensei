@@ -3,237 +3,450 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/app_widgets.dart';
 import '../../../../shared/models/community_models.dart';
+import '../../data/repositories/in_memory_community_repository.dart';
+import '../../domain/repositories/community_repository.dart';
+import '../controllers/community_controller.dart';
+import '../widgets/community_visuals.dart';
+import 'create_community_screen.dart';
+import 'create_post_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({super.key});
+  const CommunityScreen({super.key, this.repository});
+
+  final CommunityRepository? repository;
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
 
 class _CommunityScreenState extends State<CommunityScreen> {
+  late final CommunityController _controller = CommunityController(
+    widget.repository ?? InMemoryCommunityRepository(),
+  )..addListener(_refresh);
   final _searchController = TextEditingController();
   String _query = '';
   int _filter = 0;
 
-  final _groups = <CommunityGroup>[
-    CommunityGroup(
-      name: 'React Developers',
-      description: 'Hooks, architecture, frontend careers',
-      members: '2.4k',
-      icon: Icons.code_rounded,
-      color: AppColors.primary,
-      isJoined: true,
-    ),
-    CommunityGroup(
-      name: 'Product Managers',
-      description: 'Product thinking and leadership',
-      members: '1.8k',
-      icon: Icons.view_kanban_rounded,
-      color: AppColors.violet,
-    ),
-    CommunityGroup(
-      name: 'Data Scientists',
-      description: 'ML, analytics, and data careers',
-      members: '3.1k',
-      icon: Icons.query_stats_rounded,
-      color: AppColors.success,
-    ),
-    CommunityGroup(
-      name: 'Flutter Developers',
-      description: 'Dart, mobile UI, and clean code',
-      members: '1.2k',
-      icon: Icons.flutter_dash_rounded,
-      color: AppColors.cyan,
-    ),
-    CommunityGroup(
-      name: 'UI Designers',
-      description: 'Figma, UX research, design systems',
-      members: '2.7k',
-      icon: Icons.palette_outlined,
-      color: AppColors.danger,
-    ),
-    CommunityGroup(
-      name: 'Fresh Graduates',
-      description: 'First jobs, portfolios, interviews',
-      members: '4.6k',
-      icon: Icons.school_rounded,
-      color: AppColors.warning,
-    ),
-  ];
-
-  final _posts = <CommunityPost>[
-    CommunityPost(
-      author: 'Wali Khan',
-      role: 'Frontend Developer',
-      body: 'Accepted my System Design interview call! What topics should I '
-          'prioritize this week beyond caching and API design?',
-      time: '10 min ago',
-      tags: ['Interview', 'System Design'],
-      likes: 24,
-      comments: 8,
-    ),
-    CommunityPost(
-      author: 'Alex Kim',
-      role: 'React Developer',
-      body: 'I collected the React performance resources that helped me reduce '
-          'our dashboard load time. Sharing the checklist with everyone.',
-      time: '42 min ago',
-      tags: ['React', 'Resources'],
-      likes: 51,
-      comments: 13,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _controller.load();
+  }
 
   @override
   void dispose() {
+    _controller
+      ..removeListener(_refresh)
+      ..dispose();
     _searchController.dispose();
     super.dispose();
   }
 
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
   List<CommunityGroup> get _visibleGroups {
-    return _groups.where((group) {
-      final matchesSearch =
-          group.name.toLowerCase().contains(_query.toLowerCase()) ||
-              group.description.toLowerCase().contains(_query.toLowerCase());
-      final matchesFilter = _filter == 0 || (_filter == 1 && group.isJoined);
+    final normalizedQuery = _query.trim().toLowerCase();
+    return _controller.groups.where((group) {
+      final matchesSearch = normalizedQuery.isEmpty ||
+          group.name.toLowerCase().contains(normalizedQuery) ||
+          group.description.toLowerCase().contains(normalizedQuery) ||
+          group.category.toLowerCase().contains(normalizedQuery);
+      final matchesFilter = _filter == 0 || group.isJoined;
       return matchesSearch && matchesFilter;
     }).toList();
   }
 
+  Future<void> _createCommunity() async {
+    final request = await Navigator.of(context).push<CreateCommunityRequest>(
+      MaterialPageRoute(builder: (_) => const CreateCommunityScreen()),
+    );
+    if (request == null || !mounted) return;
+    final created = await _controller.createCommunity(request);
+    if (created == null || !mounted) return;
+    setState(() => _filter = 1);
+    _showMessage('${created.name} was created successfully.');
+  }
+
   Future<void> _createPost() async {
-    final post = await Navigator.of(context).push<CommunityPost>(
+    final request = await Navigator.of(context).push<CreatePostRequest>(
       MaterialPageRoute(builder: (_) => const CreatePostScreen()),
     );
-    if (post == null || !mounted) return;
-    setState(() => _posts.insert(0, post));
+    if (request == null || !mounted) return;
+    final created = await _controller.createPost(request);
+    if (created != null && mounted) _showMessage('Your post is now live.');
+  }
+
+  void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Your post is now live.')),
+      SnackBar(content: Text(message)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final joinedCount =
+        _controller.groups.where((group) => group.isJoined).length;
     return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(18, 20, 18, 0),
-            sliver: SliverList.list(
-              children: [
-                ScreenIntro(
-                  eyebrow: 'Grow together',
-                  title: 'Community',
-                  description:
-                      'Find your people, ask better questions, and share what you learn.',
-                  trailing: IconButton.filled(
-                    tooltip: 'Create post',
-                    onPressed: _createPost,
-                    icon: const Icon(Icons.add_rounded),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: _searchController,
-                  onChanged: (value) => setState(() => _query = value),
-                  decoration: InputDecoration(
-                    hintText: 'Search communities or skills',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    suffixIcon: _query.isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _query = '');
-                            },
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    ChoiceChip(
-                      label: const Text('Discover'),
-                      selected: _filter == 0,
-                      onSelected: (_) => setState(() => _filter = 0),
-                    ),
-                    ChoiceChip(
-                      label: const Text('My groups'),
-                      selected: _filter == 1,
-                      onSelected: (_) => setState(() => _filter = 1),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                SectionTitle(
-                    _filter == 0 ? 'Popular communities' : 'My communities'),
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
-          if (_visibleGroups.isEmpty)
-            const SliverToBoxAdapter(
-              child: EmptyState(
-                icon: Icons.groups_2_outlined,
-                title: 'No communities found',
-                message: 'Try another search or discover a new group.',
-              ),
-            )
-          else
+      child: RefreshIndicator(
+        onRefresh: _controller.load,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              sliver: SliverGrid.builder(
-                itemCount: _visibleGroups.length,
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 280,
-                  mainAxisExtent: 186,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                ),
-                itemBuilder: (context, index) {
-                  final group = _visibleGroups[index];
-                  return _GroupCard(
-                    group: group,
-                    onOpen: () => Navigator.of(context)
-                        .push(
-                          MaterialPageRoute(
-                            builder: (_) => CommunityDetailScreen(
-                              group: group,
-                              posts: _posts,
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+              sliver: SliverList.list(
+                children: [
+                  _CommunityHero(
+                    groupCount: _controller.groups.length,
+                    joinedCount: joinedCount,
+                    onCreateCommunity: _createCommunity,
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: _searchController,
+                    onChanged: (value) => setState(() => _query = value),
+                    decoration: InputDecoration(
+                      hintText: 'Search communities, roles, or skills',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _query = '');
+                              },
+                              icon: const Icon(Icons.close_rounded),
                             ),
-                          ),
-                        )
-                        .then((_) => setState(() {})),
-                    onJoin: () =>
-                        setState(() => group.isJoined = !group.isJoined),
-                  );
-                },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _CommunityFilter(
+                    value: _filter,
+                    joinedCount: joinedCount,
+                    onChanged: (value) => setState(() => _filter = value),
+                  ),
+                  const SizedBox(height: 22),
+                  SectionTitle(
+                    _filter == 0 ? 'Popular communities' : 'My communities',
+                    action: _filter == 1 ? 'Discover' : null,
+                    onAction: () => setState(() => _filter = 0),
+                  ),
+                  const SizedBox(height: 12),
+                ],
               ),
             ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(18, 28, 18, 12),
-            sliver: SliverToBoxAdapter(
-              child: SectionTitle(
-                'Trending discussions',
-                action: 'Create post',
-                onAction: _createPost,
+            if (_controller.isLoading && _controller.groups.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_controller.errorMessage != null &&
+                _controller.groups.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _LoadError(onRetry: _controller.load),
+              )
+            else if (_visibleGroups.isEmpty)
+              SliverToBoxAdapter(
+                child: EmptyState(
+                  icon: Icons.groups_2_outlined,
+                  title: _filter == 1
+                      ? 'No joined communities yet'
+                      : 'No communities found',
+                  message: _filter == 1
+                      ? 'Discover a group or create your own community.'
+                      : 'Try another search term or category.',
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                sliver: SliverGrid.builder(
+                  itemCount: _visibleGroups.length,
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 300,
+                    mainAxisExtent: 220,
+                    crossAxisSpacing: 13,
+                    mainAxisSpacing: 13,
+                  ),
+                  itemBuilder: (context, index) {
+                    final group = _visibleGroups[index];
+                    return _GroupCard(
+                      group: group,
+                      onOpen: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => CommunityDetailScreen(
+                            communityId: group.id,
+                            controller: _controller,
+                          ),
+                        ),
+                      ),
+                      onJoin: () async {
+                        await _controller.joinCommunity(group.id);
+                        if (mounted) _showMessage('Joined ${group.name}.');
+                      },
+                    );
+                  },
+                ),
               ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 30, 18, 12),
+              sliver: SliverToBoxAdapter(
+                child: SectionTitle(
+                  'Trending discussions',
+                  action: 'Create post',
+                  onAction: _createPost,
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 30),
+              sliver: SliverList.separated(
+                itemCount: _controller.posts.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 13),
+                itemBuilder: (context, index) => CommunityPostCard(
+                  post: _controller.posts[index],
+                  controller: _controller,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CommunityHero extends StatelessWidget {
+  const _CommunityHero({
+    required this.groupCount,
+    required this.joinedCount,
+    required this.onCreateCommunity,
+  });
+
+  final int groupCount;
+  final int joinedCount;
+  final VoidCallback onCreateCommunity;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0B57D0), AppColors.primary, AppColors.cyan],
+          stops: [0, 0.58, 1],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.24),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -36,
+            top: -50,
+            child: CircleAvatar(
+              radius: 72,
+              backgroundColor: Colors.white.withOpacity(0.08),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 28),
-            sliver: SliverList.separated(
-              itemCount: _posts.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => _PostCard(
-                post: _posts[index],
-                onChanged: () => setState(() {}),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'GROW TOGETHER',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Community',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.7,
+                          ),
+                        ),
+                        SizedBox(height: 6),
+                        Text(
+                          'Find your people. Build skills. Move careers forward.',
+                          style: TextStyle(color: Colors.white70, height: 1.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  IconButton.filled(
+                    tooltip: 'Create community',
+                    onPressed: onCreateCommunity,
+                    icon: const Icon(Icons.add_rounded, size: 28),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.primary,
+                      minimumSize: const Size(52, 52),
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  _HeroStat(
+                      icon: Icons.explore_outlined,
+                      label: '$groupCount discoverable'),
+                  _HeroStat(
+                      icon: Icons.favorite_outline_rounded,
+                      label: '$joinedCount joined'),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroStat extends StatelessWidget {
+  const _HeroStat({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 15),
+          const SizedBox(width: 6),
+          Text(label,
+              style: const TextStyle(color: Colors.white, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+}
+
+class _CommunityFilter extends StatelessWidget {
+  const _CommunityFilter({
+    required this.value,
+    required this.joinedCount,
+    required this.onChanged,
+  });
+
+  final int value;
+  final int joinedCount;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _FilterButton(
+              selected: value == 0,
+              label: 'Discover',
+              icon: Icons.explore_outlined,
+              onTap: () => onChanged(0),
+            ),
+          ),
+          Expanded(
+            child: _FilterButton(
+              selected: value == 1,
+              label: 'My groups ($joinedCount)',
+              icon: Icons.groups_2_outlined,
+              onTap: () => onChanged(1),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FilterButton extends StatelessWidget {
+  const _FilterButton({
+    required this.selected,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                size: 17, color: selected ? Colors.white : AppColors.muted),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? Colors.white : AppColors.ink,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -252,63 +465,97 @@ class _GroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = CommunityVisuals.colorFor(group.visualKey);
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Stack(
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 4,
+                decoration: BoxDecoration(
+                  gradient:
+                      LinearGradient(colors: [color, color.withOpacity(0.35)]),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(15, 17, 15, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: group.color.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    child: Icon(group.icon, color: group.color),
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.11),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(CommunityVisuals.iconFor(group.visualKey),
+                            color: color),
+                      ),
+                      const Spacer(),
+                      if (group.privacy == CommunityPrivacy.private)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 6),
+                          child: Icon(Icons.lock_outline_rounded,
+                              size: 15, color: AppColors.muted),
+                        ),
+                      Text(
+                        '${CommunityVisuals.memberCount(group.memberCount)} members',
+                        style: const TextStyle(
+                            color: AppColors.muted, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  AppBadge(label: group.category, color: color),
+                  const SizedBox(height: 8),
+                  Text(
+                    group.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900, fontSize: 15),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    group.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        const TextStyle(color: AppColors.muted, fontSize: 11),
                   ),
                   const Spacer(),
-                  Text(
-                    '${group.members} members',
-                    style:
-                        const TextStyle(color: AppColors.muted, fontSize: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 36,
+                    child: group.isJoined
+                        ? FilledButton.tonalIcon(
+                            onPressed: onOpen,
+                            icon: const Icon(Icons.arrow_forward_rounded,
+                                size: 16),
+                            label: const Text('Open'),
+                          )
+                        : FilledButton.icon(
+                            onPressed: onJoin,
+                            icon: const Icon(Icons.add_rounded, size: 17),
+                            label: const Text('Join'),
+                            style:
+                                FilledButton.styleFrom(backgroundColor: color),
+                          ),
                   ),
                 ],
               ),
-              const SizedBox(height: 11),
-              Text(
-                group.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                group.description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: AppColors.muted, fontSize: 11),
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                height: 34,
-                child: group.isJoined
-                    ? OutlinedButton(
-                        onPressed: onJoin,
-                        child: const Text('Joined'),
-                      )
-                    : FilledButton(
-                        onPressed: onJoin, child: const Text('Join')),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -318,119 +565,250 @@ class _GroupCard extends StatelessWidget {
 class CommunityDetailScreen extends StatefulWidget {
   const CommunityDetailScreen({
     super.key,
-    required this.group,
-    required this.posts,
+    required this.communityId,
+    required this.controller,
   });
 
-  final CommunityGroup group;
-  final List<CommunityPost> posts;
+  final String communityId;
+  final CommunityController controller;
 
   @override
   State<CommunityDetailScreen> createState() => _CommunityDetailScreenState();
 }
 
 class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_refresh);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_refresh);
+    super.dispose();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  CommunityGroup get _group => widget.controller.groups.firstWhere(
+        (group) => group.id == widget.communityId,
+      );
+
+  List<CommunityPost> get _posts => widget.controller.posts
+      .where((post) => post.communityId == widget.communityId)
+      .toList();
+
   Future<void> _createPost() async {
-    final post = await Navigator.of(context).push<CommunityPost>(
+    final group = _group;
+    final request = await Navigator.of(context).push<CreatePostRequest>(
       MaterialPageRoute(
-          builder: (_) => CreatePostScreen(group: widget.group.name)),
+        builder: (_) => CreatePostScreen(
+          communityId: group.id,
+          communityName: group.name,
+        ),
+      ),
     );
-    if (post != null) setState(() => widget.posts.insert(0, post));
+    if (request == null || !mounted) return;
+    final post = await widget.controller.createPost(request);
+    if (post != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post published.')),
+      );
+    }
+  }
+
+  Future<void> _leaveCommunity() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Leave ${_group.name}?'),
+        content: const Text(
+          'You can join again later. Your previous posts will remain in the community.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Leave community'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await widget.controller.leaveCommunity(widget.communityId);
+    if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final group = _group;
+    final color = CommunityVisuals.colorFor(group.visualKey);
     return Scaffold(
-      appBar: AppBar(title: Text(widget.group.name)),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createPost,
-        child: const Icon(Icons.add_rounded),
+      appBar: AppBar(
+        title: Text(group.name),
+        actions: [
+          if (group.isJoined)
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'leave') _leaveCommunity();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'leave',
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout_rounded, color: AppColors.danger),
+                      SizedBox(width: 10),
+                      Text('Leave community'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
+      floatingActionButton: group.isJoined
+          ? FloatingActionButton.extended(
+              onPressed: _createPost,
+              icon: const Icon(Icons.edit_rounded),
+              label: const Text('Create post'),
+            )
+          : null,
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 90),
+        padding: const EdgeInsets.fromLTRB(18, 8, 18, 96),
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [widget.group.color, AppColors.cyan],
+                colors: [color, Color.lerp(color, AppColors.cyan, 0.7)!],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withOpacity(0.2),
+                  blurRadius: 26,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(widget.group.icon, color: Colors.white, size: 34),
+                Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Icon(
+                        CommunityVisuals.iconFor(group.visualKey),
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                    const Spacer(),
+                    _HeroStat(
+                      icon: group.privacy == CommunityPrivacy.public
+                          ? Icons.public_rounded
+                          : Icons.lock_outline_rounded,
+                      label: group.privacy.name,
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 18),
                 Text(
-                  widget.group.name,
+                  group.name,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 24,
+                    fontSize: 25,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(widget.group.description,
+                Text(group.description,
                     style: const TextStyle(color: Colors.white70)),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 Row(
                   children: [
                     const Icon(Icons.groups_2_outlined,
                         color: Colors.white, size: 18),
                     const SizedBox(width: 6),
-                    Text('${widget.group.members} members',
-                        style: const TextStyle(color: Colors.white)),
-                    const Spacer(),
-                    FilledButton.tonal(
-                      onPressed: () => setState(
-                        () => widget.group.isJoined = !widget.group.isJoined,
-                      ),
-                      child:
-                          Text(widget.group.isJoined ? 'Joined' : 'Join group'),
+                    Text(
+                      '${CommunityVisuals.memberCount(group.memberCount)} members',
+                      style: const TextStyle(color: Colors.white),
                     ),
+                    const Spacer(),
+                    if (group.isJoined)
+                      const AppBadge(label: 'MEMBER', color: Colors.white)
+                    else
+                      FilledButton.tonal(
+                        onPressed: () =>
+                            widget.controller.joinCommunity(group.id),
+                        child: const Text('Join group'),
+                      ),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 22),
-          const SectionTitle('Community discussions'),
+          const SizedBox(height: 26),
+          SectionTitle(
+            'Community discussions',
+            action: group.isJoined ? 'Create post' : null,
+            onAction: _createPost,
+          ),
           const SizedBox(height: 12),
-          ...widget.posts.map((post) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _PostCard(post: post, onChanged: () => setState(() {})),
-              )),
+          if (_posts.isEmpty)
+            const EmptyState(
+              icon: Icons.forum_outlined,
+              title: 'Start the first discussion',
+              message:
+                  'Ask a question or share a useful resource with this community.',
+            )
+          else
+            ..._posts.map((post) => Padding(
+                  padding: const EdgeInsets.only(bottom: 13),
+                  child: CommunityPostCard(
+                      post: post, controller: widget.controller),
+                )),
         ],
       ),
     );
   }
 }
 
-class _PostCard extends StatefulWidget {
-  const _PostCard({required this.post, required this.onChanged});
+class CommunityPostCard extends StatelessWidget {
+  const CommunityPostCard({
+    super.key,
+    required this.post,
+    required this.controller,
+  });
 
   final CommunityPost post;
-  final VoidCallback onChanged;
+  final CommunityController controller;
 
-  @override
-  State<_PostCard> createState() => _PostCardState();
-}
-
-class _PostCardState extends State<_PostCard> {
-  bool _liked = false;
-
-  void _showComments() {
-    final controller = TextEditingController();
-    showModalBottomSheet<void>(
+  Future<void> _showComments(BuildContext context) async {
+    final textController = TextEditingController();
+    final comment = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      showDragHandle: true,
       builder: (context) => Padding(
         padding: EdgeInsets.fromLTRB(
           18,
-          18,
+          4,
           18,
           18 + MediaQuery.viewInsetsOf(context).bottom,
         ),
@@ -441,9 +819,10 @@ class _PostCardState extends State<_PostCard> {
             const SectionTitle('Join the discussion'),
             const SizedBox(height: 12),
             TextField(
-              controller: controller,
+              controller: textController,
               autofocus: true,
               maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
               decoration:
                   const InputDecoration(hintText: 'Write a helpful reply…'),
             ),
@@ -452,11 +831,8 @@ class _PostCardState extends State<_PostCard> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: () {
-                  if (controller.text.trim().isNotEmpty) {
-                    widget.post.comments++;
-                    widget.onChanged();
-                  }
-                  Navigator.pop(context);
+                  final value = textController.text.trim();
+                  if (value.isNotEmpty) Navigator.pop(context, value);
                 },
                 child: const Text('Post reply'),
               ),
@@ -464,7 +840,9 @@ class _PostCardState extends State<_PostCard> {
           ],
         ),
       ),
-    ).whenComplete(controller.dispose);
+    );
+    textController.dispose();
+    if (comment != null) await controller.addComment(post.id, comment);
   }
 
   @override
@@ -477,63 +855,92 @@ class _PostCardState extends State<_PostCard> {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: AppColors.primary.withOpacity(0.12),
-                  child: Text(widget.post.author.characters.first,
-                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.primary, AppColors.cyan],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Center(
+                    child: Text(
+                      post.author.characters.first,
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w900),
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 11),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.post.author,
-                          style: const TextStyle(fontWeight: FontWeight.w800)),
-                      Text('${widget.post.role} · ${widget.post.time}',
-                          style: const TextStyle(
-                              color: AppColors.muted, fontSize: 11)),
+                      Text(post.author,
+                          style: const TextStyle(fontWeight: FontWeight.w900)),
+                      Text(
+                        '${post.role} · ${CommunityVisuals.relativeTime(post.createdAt)}',
+                        style: const TextStyle(
+                            color: AppColors.muted, fontSize: 11),
+                      ),
                     ],
                   ),
                 ),
-                const Icon(Icons.more_horiz_rounded, color: AppColors.muted),
+                IconButton(
+                  tooltip: post.isFollowed
+                      ? 'Unfollow discussion'
+                      : 'Follow discussion',
+                  onPressed: () => controller.toggleFollow(post.id),
+                  icon: Icon(
+                    post.isFollowed
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
+                    color:
+                        post.isFollowed ? AppColors.primary : AppColors.muted,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 14),
-            Text(widget.post.body),
+            Text(post.body, style: const TextStyle(height: 1.5)),
+            if (post.attachments.isNotEmpty) ...[
+              const SizedBox(height: 13),
+              ...post.attachments.map((attachment) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _PostAttachment(attachment: attachment),
+                  )),
+            ],
             const SizedBox(height: 12),
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children:
-                  widget.post.tags.map((tag) => AppBadge(label: tag)).toList(),
+              children: post.tags.map((tag) => AppBadge(label: tag)).toList(),
             ),
             const Divider(height: 26),
             Row(
               children: [
                 TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _liked = !_liked;
-                      widget.post.likes += _liked ? 1 : -1;
-                    });
-                    widget.onChanged();
-                  },
-                  icon: Icon(_liked ? Icons.favorite : Icons.favorite_border,
-                      size: 18, color: _liked ? AppColors.danger : null),
-                  label: Text('${widget.post.likes}'),
+                  onPressed: () => controller.toggleLike(post.id),
+                  icon: Icon(
+                    post.isLiked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    size: 18,
+                    color: post.isLiked ? AppColors.danger : null,
+                  ),
+                  label: Text('${post.likeCount}'),
                 ),
                 TextButton.icon(
-                  onPressed: _showComments,
+                  onPressed: () => _showComments(context),
                   icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-                  label: Text('${widget.post.comments}'),
+                  label: Text('${post.commentCount}'),
                 ),
                 const Spacer(),
-                IconButton(
-                  tooltip: 'Follow discussion',
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Discussion followed.')),
-                  ),
-                  icon: const Icon(Icons.bookmark_border_rounded),
+                TextButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.share_outlined, size: 18),
+                  label: const Text('Share'),
                 ),
               ],
             ),
@@ -544,95 +951,79 @@ class _PostCardState extends State<_PostCard> {
   }
 }
 
-class CreatePostScreen extends StatefulWidget {
-  const CreatePostScreen({super.key, this.group});
+class _PostAttachment extends StatelessWidget {
+  const _PostAttachment({required this.attachment});
 
-  final String? group;
-
-  @override
-  State<CreatePostScreen> createState() => _CreatePostScreenState();
-}
-
-class _CreatePostScreenState extends State<CreatePostScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _bodyController = TextEditingController();
-  String _type = 'Question';
-
-  @override
-  void dispose() {
-    _bodyController.dispose();
-    super.dispose();
-  }
-
-  void _publish() {
-    if (!_formKey.currentState!.validate()) return;
-    Navigator.pop(
-      context,
-      CommunityPost(
-        author: 'Taznia',
-        role: 'Job Sensei member',
-        body: _bodyController.text.trim(),
-        time: 'Just now',
-        tags: [_type, if (widget.group != null) widget.group!],
-      ),
-    );
-  }
+  final CommunityAttachment attachment;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Create post')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(18),
-          children: [
-            const ScreenIntro(
-              eyebrow: 'Share with care',
-              title: 'Start a conversation',
-              description:
-                  'Ask a focused question or share a resource that helps others grow.',
+    final isImage = attachment.kind == AttachmentKind.image;
+    final color = isImage ? AppColors.primary : AppColors.violet;
+    return Container(
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.15)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(11),
             ),
-            const SizedBox(height: 24),
-            DropdownButtonFormField<String>(
-              value: _type,
-              decoration: const InputDecoration(labelText: 'Post type'),
-              items: const [
-                'Question',
-                'Resource',
-                'Experience',
-                'Career update'
-              ]
-                  .map((value) =>
-                      DropdownMenuItem(value: value, child: Text(value)))
-                  .toList(),
-              onChanged: (value) => setState(() => _type = value!),
+            child: Icon(
+              isImage ? Icons.image_outlined : Icons.description_outlined,
+              color: color,
+              size: 21,
             ),
-            const SizedBox(height: 14),
-            TextFormField(
-              controller: _bodyController,
-              maxLines: 8,
-              autofocus: true,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'What would you like to discuss?',
-                alignLabelWithHint: true,
-              ),
-              validator: (value) {
-                if (value == null || value.trim().length < 15) {
-                  return 'Please add at least 15 characters.';
-                }
-                return null;
-              },
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  attachment.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 12),
+                ),
+                Text(
+                  CommunityVisuals.fileSize(attachment.sizeBytes),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 10),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: _publish,
-              icon: const Icon(Icons.send_rounded),
-              label: const Text('Publish post'),
-            ),
-          ],
-        ),
+          ),
+          Icon(Icons.open_in_new_rounded, size: 17, color: color),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadError extends StatelessWidget {
+  const _LoadError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.cloud_off_rounded, size: 44, color: AppColors.muted),
+          const SizedBox(height: 12),
+          const Text('Could not load communities.'),
+          TextButton(onPressed: onRetry, child: const Text('Try again')),
+        ],
       ),
     );
   }
