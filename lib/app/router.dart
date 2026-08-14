@@ -35,7 +35,11 @@ abstract final class AppRouter {
       jobs => (_) => const JobsPage(),
       resumes => (_) => const ResumesPage(),
       applications => (_) => const ApplicationsPage(),
-      ai => (_) => const AiChatScreen(),
+      ai => (_) => AiChatScreen(
+            service: Injector.chatService(),
+            historyRepository: Injector.chatHistoryRepository(),
+            attachmentPicker: Injector.aiAttachmentPickerService(),
+          ),
       learning => (_) => const LearningResourcesScreen(),
       skillGap => (_) => const SkillGapScreen(),
       community => (_) => const CommunityScreen(),
@@ -82,7 +86,11 @@ class _AppShellState extends State<AppShell> {
 
   late final List<Widget> _screens = [
     CommunityScreen(repository: Injector.communityRepository()),
-    const AiChatScreen(),
+    AiChatScreen(
+      service: Injector.chatService(),
+      historyRepository: Injector.chatHistoryRepository(),
+      attachmentPicker: Injector.aiAttachmentPickerService(),
+    ),
     const SkillGapScreen(),
     const LearningResourcesScreen(),
   ];
@@ -92,7 +100,15 @@ class _AppShellState extends State<AppShell> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 820;
-        final content = IndexedStack(index: _index, children: _screens);
+        final content = IndexedStack(
+          index: _index,
+          children: _screens.indexed.map((entry) {
+            return TickerMode(
+              enabled: entry.$1 == _index,
+              child: entry.$2,
+            );
+          }).toList(),
+        );
 
         if (wide) {
           return Scaffold(

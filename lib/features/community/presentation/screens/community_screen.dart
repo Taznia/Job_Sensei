@@ -70,8 +70,26 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Future<void> _createPost() async {
+    final joinedGroups =
+        _controller.groups.where((group) => group.isJoined).toList();
+    if (joinedGroups.isEmpty) {
+      _showMessage('Join or create a community before publishing a post.');
+      return;
+    }
+    final destination = await showModalBottomSheet<CommunityGroup>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => _PostDestinationSheet(groups: joinedGroups),
+    );
+    if (destination == null || !mounted) return;
     final request = await Navigator.of(context).push<CreatePostRequest>(
-      MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+      MaterialPageRoute(
+        builder: (_) => CreatePostScreen(
+          communityId: destination.id,
+          communityName: destination.name,
+        ),
+      ),
     );
     if (request == null || !mounted) return;
     final created = await _controller.createPost(request);
@@ -210,6 +228,75 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   post: _controller.posts[index],
                   controller: _controller,
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PostDestinationSheet extends StatelessWidget {
+  const _PostDestinationSheet({required this.groups});
+
+  final List<CommunityGroup> groups;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Choose a community',
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 6),
+            const Text(
+              'Your post will appear in this community and in Trending Discussions.',
+              style: TextStyle(color: AppColors.muted),
+            ),
+            const SizedBox(height: 14),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * 0.52,
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: groups.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final group = groups[index];
+                  final color = CommunityVisuals.colorFor(group.visualKey);
+                  return Card(
+                    child: ListTile(
+                      onTap: () => Navigator.pop(context, group),
+                      leading: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.11),
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                        child: Icon(
+                          CommunityVisuals.iconFor(group.visualKey),
+                          color: color,
+                        ),
+                      ),
+                      title: Text(
+                        group.name,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      subtitle: Text(
+                        '${group.category} - ${CommunityVisuals.memberCount(group.memberCount)} members',
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_rounded),
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -824,7 +911,7 @@ class CommunityPostCard extends StatelessWidget {
               maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
               decoration:
-                  const InputDecoration(hintText: 'Write a helpful reply…'),
+                  const InputDecoration(hintText: 'Write a helpful reply...'),
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -880,7 +967,7 @@ class CommunityPostCard extends StatelessWidget {
                       Text(post.author,
                           style: const TextStyle(fontWeight: FontWeight.w900)),
                       Text(
-                        '${post.role} · ${CommunityVisuals.relativeTime(post.createdAt)}',
+                        '${post.role} - ${CommunityVisuals.relativeTime(post.createdAt)}',
                         style: const TextStyle(
                             color: AppColors.muted, fontSize: 11),
                       ),

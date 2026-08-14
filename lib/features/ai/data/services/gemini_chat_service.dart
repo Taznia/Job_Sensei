@@ -2,8 +2,14 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../shared/models/chat_message.dart';
+
 abstract interface class ChatService {
-  Future<String> sendMessage(String message);
+  Future<String> sendMessage({
+    required String message,
+    required List<ChatMessage> history,
+    List<PendingChatAttachment> attachments,
+  });
 }
 
 class GeminiChatService implements ChatService {
@@ -13,13 +19,43 @@ class GeminiChatService implements ChatService {
   final http.Client _client;
 
   @override
-  Future<String> sendMessage(String message) async {
-    if (_apiKey.isEmpty) return _demoReply(message);
+  Future<String> sendMessage({
+    required String message,
+    required List<ChatMessage> history,
+    List<PendingChatAttachment> attachments = const [],
+  }) async {
+    if (_apiKey.isEmpty) return _demoReply(message, attachments);
 
     final uri = Uri.parse(
       'https://generativelanguage.googleapis.com/v1beta/models/'
       'gemini-2.0-flash:generateContent?key=$_apiKey',
     );
+    final contents = history
+        .where((item) => item.text.trim().isNotEmpty)
+        .map((item) => {
+              'role': item.author == MessageAuthor.user ? 'user' : 'model',
+              'parts': [
+                {'text': item.text},
+              ],
+            })
+        .toList();
+    contents.add({
+      'role': 'user',
+      'parts': [
+        {
+          'text': message.trim().isEmpty
+              ? 'Please review the attached file and give career-focused feedback.'
+              : message,
+        },
+        ...attachments.where(_supportsInlineData).map((attachment) => {
+              'inline_data': {
+                'mime_type': attachment.mimeType,
+                'data': base64Encode(attachment.bytes!),
+              },
+            }),
+      ],
+    });
+
     final response = await _client
         .post(
           uri,
@@ -28,23 +64,17 @@ class GeminiChatService implements ChatService {
             'system_instruction': {
               'parts': [
                 {
-                  'text':
-                      'You are Job Sensei, a concise and encouraging career '
-                          'coach. Give practical, ethical job-search advice.',
+                  'text': 'You are Job Sensei, a concise and encouraging career '
+                      'coach. Give practical, ethical job-search advice. When a '
+                      'file is attached, explain what you reviewed and never '
+                      'claim to have read unsupported file content.',
                 },
               ],
             },
-            'contents': [
-              {
-                'role': 'user',
-                'parts': [
-                  {'text': message},
-                ],
-              },
-            ],
+            'contents': contents,
           }),
         )
-        .timeout(const Duration(seconds: 25));
+        .timeout(const Duration(seconds: 30));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Gemini request failed (${response.statusCode}).');
@@ -62,12 +92,28 @@ class GeminiChatService implements ChatService {
     return text.trim();
   }
 
-  String _demoReply(String message) {
+  bool _supportsInlineData(PendingChatAttachment attachment) {
+    if (attachment.bytes == null) return false;
+    return attachment.mimeType.startsWith('image/') ||
+        attachment.mimeType == 'application/pdf' ||
+        attachment.mimeType == 'text/plain';
+  }
+
+  String _demoReply(
+    String message,
+    List<PendingChatAttachment> attachments,
+  ) {
     final normalized = message.toLowerCase();
+    if (attachments.isNotEmpty) {
+      final names = attachments.map((item) => item.name).join(', ');
+      return 'I received $names. Connect a Gemini API key to analyze supported '
+          'images, PDFs, and text files. Meanwhile, tell me what kind of feedback '
+          'you want, such as resume impact, clarity, or interview readiness.';
+    }
     if (normalized.contains('interview')) {
       return 'Let\'s prepare in three steps: study the role, write five STAR '
           'stories from your experience, and practice a 60-second introduction. '
-          'Would you like me to create interview questions for your target role?';
+          'Would you like me to create questions for your target role?';
     }
     if (normalized.contains('resume') || normalized.contains('cv')) {
       return 'Start each bullet with a strong action verb, describe what you did, '
