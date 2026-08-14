@@ -8,6 +8,7 @@ import '../../data/services/gemini_chat_service.dart';
 import '../../domain/repositories/chat_history_repository.dart';
 import '../controllers/ai_chat_controller.dart';
 import '../widgets/ai_buddy.dart';
+import '../widgets/animated_ai_background.dart';
 import '../widgets/chat_composer.dart';
 import '../widgets/chat_history_panel.dart';
 
@@ -311,7 +312,7 @@ class _ChatWorkspace extends StatelessWidget {
     final messages = conversation?.messages ?? const <ChatMessage>[];
     return Stack(
       children: [
-        const Positioned.fill(child: _BlueAtmosphere()),
+        const Positioned.fill(child: AnimatedAiBackground()),
         Column(
           children: [
             _ChatHeader(
@@ -353,43 +354,6 @@ class _ChatWorkspace extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _BlueAtmosphere extends StatelessWidget {
-  const _BlueAtmosphere();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF7FAFF), Color(0xFFEAF3FF), Color(0xFFF5FBFF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -80,
-            top: 90,
-            child: CircleAvatar(
-              radius: 130,
-              backgroundColor: AppColors.cyan.withOpacity(0.08),
-            ),
-          ),
-          Positioned(
-            left: -100,
-            bottom: 80,
-            child: CircleAvatar(
-              radius: 150,
-              backgroundColor: AppColors.primary.withOpacity(0.055),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -478,9 +442,9 @@ class _BuddyWelcome extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(22, 30, 22, 18),
       child: Column(
         children: [
-          const AiBuddy(size: 104),
-          const SizedBox(height: 18),
-          Text('Hi, I\'m Momo!',
+          const AiBuddy(size: 110, showGreeting: true),
+          const SizedBox(height: 16),
+          Text('Your AI career companion',
               style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 8),
           ConstrainedBox(

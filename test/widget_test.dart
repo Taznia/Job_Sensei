@@ -5,6 +5,7 @@ import 'package:jobsensei_frontend/features/ai/data/repositories/in_memory_chat_
 import 'package:jobsensei_frontend/features/ai/data/services/ai_attachment_picker_service.dart';
 import 'package:jobsensei_frontend/features/ai/data/services/gemini_chat_service.dart';
 import 'package:jobsensei_frontend/features/ai/presentation/screens/ai_chat_screen.dart';
+import 'package:jobsensei_frontend/features/ai/presentation/widgets/ai_buddy.dart';
 import 'package:jobsensei_frontend/features/community/data/services/attachment_picker_service.dart';
 import 'package:jobsensei_frontend/features/community/presentation/screens/create_post_screen.dart';
 import 'package:jobsensei_frontend/shared/models/chat_message.dart';
@@ -24,6 +25,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.textContaining('Momo'), findsWidgets);
+    expect(find.text('Hi! I\'m Momo'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is AiBuddy && widget.showGreeting,
+      ),
+      findsOneWidget,
+    );
     expect(find.byTooltip('Chat history'), findsOneWidget);
     expect(find.byIcon(Icons.refresh_rounded), findsNothing);
     expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
