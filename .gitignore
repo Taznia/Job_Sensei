@@ -9,6 +9,7 @@ coverage/
 *.ipr
 *.iws
 build/
+*.apk
 **/DerivedData/
 **/Pods/
 **/xcuserdata/
