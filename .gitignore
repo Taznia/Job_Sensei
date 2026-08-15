@@ -4,7 +4,10 @@
 .build/
 coverage/
 .idea/
-.vscode/
+# Ignore local VS Code settings but keep the shared run configuration, so the
+# play button works on a fresh clone without picking a device first.
+.vscode/*
+!.vscode/launch.json
 *.iml
 *.ipr
 *.iws
