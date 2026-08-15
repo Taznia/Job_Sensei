@@ -93,8 +93,26 @@ class InMemoryCommunityRepository implements CommunityRepository {
       createdAt: DateTime.now().subtract(const Duration(minutes: 10)),
       tags: const ['Interview', 'System Design'],
       communityId: 'react-developers',
+      comments: [
+        CommunityComment(
+          id: 'comment-system-design-1',
+          authorId: 'user-nadia',
+          author: 'Nadia Rahman',
+          body:
+              'Start with scalability trade-offs, database design, and API contracts.',
+          createdAt: DateTime.now().subtract(const Duration(minutes: 7)),
+        ),
+        CommunityComment(
+          id: 'comment-system-design-2',
+          authorId: 'user-sami',
+          author: 'Sami Ahmed',
+          body:
+              'Practice explaining one complete design clearly before adding more topics.',
+          createdAt: DateTime.now().subtract(const Duration(minutes: 4)),
+        ),
+      ],
       likeCount: 24,
-      commentCount: 8,
+      commentCount: 2,
     ),
     CommunityPost(
       id: 'post-react-performance',
@@ -115,8 +133,17 @@ class InMemoryCommunityRepository implements CommunityRepository {
           url: 'https://example.com/react-performance-checklist.pdf',
         ),
       ],
+      comments: [
+        CommunityComment(
+          id: 'comment-performance-1',
+          authorId: 'user-maya',
+          author: 'Maya Hasan',
+          body: 'This checklist is very useful. Thank you for sharing it!',
+          createdAt: DateTime.now().subtract(const Duration(minutes: 31)),
+        ),
+      ],
       likeCount: 51,
-      commentCount: 13,
+      commentCount: 1,
     ),
   ];
 
@@ -223,10 +250,19 @@ class InMemoryCommunityRepository implements CommunityRepository {
     required String postId,
     required String body,
   }) {
-    return _updatePost(
-      postId,
-      (post) => post.copyWith(commentCount: post.commentCount + 1),
-    );
+    return _updatePost(postId, (post) {
+      final comment = CommunityComment(
+        id: 'comment-${DateTime.now().microsecondsSinceEpoch}',
+        authorId: 'current-user',
+        author: 'Taznia',
+        body: body,
+        createdAt: DateTime.now(),
+      );
+      return post.copyWith(
+        commentCount: post.commentCount + 1,
+        comments: [...post.comments, comment],
+      );
+    });
   }
 
   Future<CommunityPost> _updatePost(

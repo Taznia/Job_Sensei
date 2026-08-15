@@ -82,9 +82,11 @@ class CommunityController extends ChangeNotifier {
     });
   }
 
-  Future<void> addComment(String postId, String body) async {
-    await _run(() async {
-      _replacePost(await _repository.addComment(postId: postId, body: body));
+  Future<CommunityPost?> addComment(String postId, String body) {
+    return _run(() async {
+      final updated = await _repository.addComment(postId: postId, body: body);
+      _replacePost(updated);
+      return updated;
     });
   }
 

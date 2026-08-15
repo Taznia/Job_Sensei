@@ -249,7 +249,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
           isPickingAttachment: _isPickingAttachment,
           showMenuButton: !wide,
           onOpenHistory: () => _scaffoldKey.currentState?.openDrawer(),
-          onNewChat: _newChat,
           onAttach: _showAttachmentMenu,
           onRemoveAttachment: (index) =>
               setState(() => _pendingAttachments.removeAt(index)),
@@ -288,7 +287,6 @@ class _ChatWorkspace extends StatelessWidget {
     required this.isPickingAttachment,
     required this.showMenuButton,
     required this.onOpenHistory,
-    required this.onNewChat,
     required this.onAttach,
     required this.onRemoveAttachment,
     required this.onSend,
@@ -301,7 +299,6 @@ class _ChatWorkspace extends StatelessWidget {
   final bool isPickingAttachment;
   final bool showMenuButton;
   final VoidCallback onOpenHistory;
-  final VoidCallback onNewChat;
   final VoidCallback onAttach;
   final ValueChanged<int> onRemoveAttachment;
   final void Function([String? preset]) onSend;
@@ -320,7 +317,6 @@ class _ChatWorkspace extends StatelessWidget {
               isThinking: controller.isSending,
               showMenuButton: showMenuButton,
               onOpenHistory: onOpenHistory,
-              onNewChat: onNewChat,
             ),
             if (controller.isLoading && conversation == null)
               const Expanded(child: Center(child: CircularProgressIndicator()))
@@ -364,14 +360,12 @@ class _ChatHeader extends StatelessWidget {
     required this.isThinking,
     required this.showMenuButton,
     required this.onOpenHistory,
-    required this.onNewChat,
   });
 
   final String title;
   final bool isThinking;
   final bool showMenuButton;
   final VoidCallback onOpenHistory;
-  final VoidCallback onNewChat;
 
   @override
   Widget build(BuildContext context) {
@@ -420,11 +414,6 @@ class _ChatHeader extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            tooltip: 'New chat',
-            onPressed: onNewChat,
-            icon: const Icon(Icons.add_comment_outlined),
-          ),
         ],
       ),
     );
@@ -444,8 +433,17 @@ class _BuddyWelcome extends StatelessWidget {
         children: [
           const AiBuddy(size: 110, showGreeting: true),
           const SizedBox(height: 16),
-          Text('Your AI career companion',
-              style: Theme.of(context).textTheme.headlineMedium),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: SizedBox(
+              width: double.infinity,
+              child: Text(
+                'Your AI career companion',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),

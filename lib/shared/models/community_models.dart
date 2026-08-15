@@ -87,6 +87,22 @@ class PendingAttachment {
   final Uint8List? bytes;
 }
 
+class CommunityComment {
+  const CommunityComment({
+    required this.id,
+    required this.authorId,
+    required this.author,
+    required this.body,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String authorId;
+  final String author;
+  final String body;
+  final DateTime createdAt;
+}
+
 class CommunityPost {
   const CommunityPost({
     required this.id,
@@ -98,6 +114,7 @@ class CommunityPost {
     required this.tags,
     this.communityId,
     this.attachments = const [],
+    this.comments = const [],
     this.likeCount = 0,
     this.commentCount = 0,
     this.isLiked = false,
@@ -113,6 +130,7 @@ class CommunityPost {
   final List<String> tags;
   final String? communityId;
   final List<CommunityAttachment> attachments;
+  final List<CommunityComment> comments;
   final int likeCount;
   final int commentCount;
   final bool isLiked;
@@ -123,6 +141,7 @@ class CommunityPost {
     int? commentCount,
     bool? isLiked,
     bool? isFollowed,
+    List<CommunityComment>? comments,
   }) {
     return CommunityPost(
       id: id,
@@ -134,6 +153,7 @@ class CommunityPost {
       tags: tags,
       communityId: communityId,
       attachments: attachments,
+      comments: comments ?? this.comments,
       likeCount: likeCount ?? this.likeCount,
       commentCount: commentCount ?? this.commentCount,
       isLiked: isLiked ?? this.isLiked,

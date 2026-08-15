@@ -33,8 +33,38 @@ void main() {
       findsOneWidget,
     );
     expect(find.byTooltip('Chat history'), findsOneWidget);
+    expect(find.byTooltip('New chat'), findsNothing);
     expect(find.byIcon(Icons.refresh_rounded), findsNothing);
     expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
+
+    final screenCenter =
+        tester.view.physicalSize.width / tester.view.devicePixelRatio / 2;
+    expect(
+      tester.getCenter(find.byKey(const ValueKey('momo-welcome-body'))).dx,
+      closeTo(screenCenter, 1.5),
+    );
+    expect(
+      tester.getCenter(find.text('Your AI career companion')).dx,
+      closeTo(screenCenter, 1.5),
+    );
+  });
+
+  testWidgets('community cards do not overflow on a scaled phone display',
+      (tester) async {
+    tester.view.physicalSize = const Size(720, 1600);
+    tester.view.devicePixelRatio = 2;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(
+      tester.platformDispatcher.clearTextScaleFactorTestValue,
+    );
+
+    await tester.pumpWidget(const JobSenseiApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Popular communities'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('community search filters groups', (tester) async {
@@ -121,6 +151,47 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Share something useful'), findsOneWidget);
     expect(find.text('REACT DEVELOPERS'), findsOneWidget);
+  });
+
+  testWidgets('trending post supports comments, love, and sharing',
+      (tester) async {
+    await tester.pumpWidget(const JobSenseiApp());
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byType(CustomScrollView).first,
+      const Offset(0, -1200),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Interview'), findsNothing);
+    expect(find.text('System Design'), findsNothing);
+
+    await tester.tap(find.byTooltip('View comments').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Comments'), findsOneWidget);
+    expect(find.textContaining('Start with scalability'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Write a helpful reply...'),
+      'This explanation helped me prepare.',
+    );
+    await tester.tap(find.byTooltip('Post reply'));
+    await tester.pumpAndSettle();
+    expect(find.text('This explanation helped me prepare.'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Close comments'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byTooltip('Love post').first);
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Remove love'), findsWidgets);
+
+    await tester.tap(find.byTooltip('Share post').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Share post'), findsOneWidget);
+    expect(find.text('WhatsApp'), findsOneWidget);
+    expect(find.text('Copy post text'), findsOneWidget);
   });
 
   testWidgets('AI history drawer shows previous conversations', (tester) async {

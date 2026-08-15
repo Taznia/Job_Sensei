@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/app_widgets.dart';
@@ -106,6 +108,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Widget build(BuildContext context) {
     final joinedCount =
         _controller.groups.where((group) => group.isJoined).length;
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final groupCardHeight = 226 + ((textScale - 1).clamp(0.0, 0.8) * 72);
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: _controller.load,
@@ -183,9 +187,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 sliver: SliverGrid.builder(
                   itemCount: _visibleGroups.length,
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 300,
-                    mainAxisExtent: 220,
+                    mainAxisExtent: groupCardHeight,
                     crossAxisSpacing: 13,
                     mainAxisSpacing: 13,
                   ),
@@ -248,58 +252,60 @@ class _PostDestinationSheet extends StatelessWidget {
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Choose a community',
-                style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 6),
-            const Text(
-              'Your post will appear in this community and in Trending Discussions.',
-              style: TextStyle(color: AppColors.muted),
-            ),
-            const SizedBox(height: 14),
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * 0.52,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Choose a community',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 6),
+              const Text(
+                'Your post will appear in this community and in Trending Discussions.',
+                style: TextStyle(color: AppColors.muted),
               ),
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: groups.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final group = groups[index];
-                  final color = CommunityVisuals.colorFor(group.visualKey);
-                  return Card(
-                    child: ListTile(
-                      onTap: () => Navigator.pop(context, group),
-                      leading: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.11),
-                          borderRadius: BorderRadius.circular(13),
+              const SizedBox(height: 14),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.52,
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: groups.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final group = groups[index];
+                    final color = CommunityVisuals.colorFor(group.visualKey);
+                    return Card(
+                      child: ListTile(
+                        onTap: () => Navigator.pop(context, group),
+                        leading: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.11),
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: Icon(
+                            CommunityVisuals.iconFor(group.visualKey),
+                            color: color,
+                          ),
                         ),
-                        child: Icon(
-                          CommunityVisuals.iconFor(group.visualKey),
-                          color: color,
+                        title: Text(
+                          group.name,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
+                        subtitle: Text(
+                          '${group.category} - ${CommunityVisuals.memberCount(group.memberCount)} members',
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_rounded),
                       ),
-                      title: Text(
-                        group.name,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      subtitle: Text(
-                        '${group.category} - ${CommunityVisuals.memberCount(group.memberCount)} members',
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_rounded),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -588,17 +594,33 @@ class _GroupCard extends StatelessWidget {
                         child: Icon(CommunityVisuals.iconFor(group.visualKey),
                             color: color),
                       ),
-                      const Spacer(),
-                      if (group.privacy == CommunityPrivacy.private)
-                        const Padding(
-                          padding: EdgeInsets.only(right: 6),
-                          child: Icon(Icons.lock_outline_rounded,
-                              size: 15, color: AppColors.muted),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            if (group.privacy == CommunityPrivacy.private) ...[
+                              const Icon(
+                                Icons.lock_outline_rounded,
+                                size: 15,
+                                color: AppColors.muted,
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            Flexible(
+                              child: Text(
+                                '${CommunityVisuals.memberCount(group.memberCount)} members',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      Text(
-                        '${CommunityVisuals.memberCount(group.memberCount)} members',
-                        style: const TextStyle(
-                            color: AppColors.muted, fontSize: 10),
                       ),
                     ],
                   ),
@@ -887,49 +909,56 @@ class CommunityPostCard extends StatelessWidget {
   final CommunityController controller;
 
   Future<void> _showComments(BuildContext context) async {
-    final textController = TextEditingController();
-    final comment = await showModalBottomSheet<String>(
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          18,
-          4,
-          18,
-          18 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SectionTitle('Join the discussion'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: textController,
-              autofocus: true,
-              maxLines: 3,
-              textCapitalization: TextCapitalization.sentences,
-              decoration:
-                  const InputDecoration(hintText: 'Write a helpful reply...'),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () {
-                  final value = textController.text.trim();
-                  if (value.isNotEmpty) Navigator.pop(context, value);
-                },
-                child: const Text('Post reply'),
-              ),
-            ),
-          ],
-        ),
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CommentsSheet(
+        post: post,
+        onSubmit: (body) => controller.addComment(post.id, body),
       ),
     );
-    textController.dispose();
-    if (comment != null) await controller.addComment(post.id, comment);
+  }
+
+  Future<void> _showShareOptions(BuildContext context) async {
+    final action = await showModalBottomSheet<_PostShareAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => const _PostShareSheet(),
+    );
+    if (action == null || !context.mounted) return;
+    final text = '${post.author} shared on Job Sensei:\n\n${post.body}';
+    if (action == _PostShareAction.copy) {
+      await Clipboard.setData(ClipboardData(text: text));
+      if (context.mounted) _showMessage(context, 'Post copied.');
+      return;
+    }
+
+    final uri = action == _PostShareAction.whatsApp
+        ? Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}')
+        : Uri(
+            scheme: 'mailto',
+            queryParameters: {
+              'subject': 'Job Sensei community post',
+              'body': text,
+            },
+          );
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && context.mounted) {
+        _showMessage(context, 'Could not open that sharing app.');
+      }
+    } catch (_) {
+      if (context.mounted) {
+        _showMessage(context, 'Could not open that sharing app.');
+      }
+    }
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -998,40 +1027,333 @@ class CommunityPostCard extends StatelessWidget {
                     child: _PostAttachment(attachment: attachment),
                   )),
             ],
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: post.tags.map((tag) => AppBadge(label: tag)).toList(),
-            ),
             const Divider(height: 26),
             Row(
               children: [
-                TextButton.icon(
-                  onPressed: () => controller.toggleLike(post.id),
-                  icon: Icon(
-                    post.isLiked
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    size: 18,
-                    color: post.isLiked ? AppColors.danger : null,
+                Tooltip(
+                  message: post.isLiked ? 'Remove love' : 'Love post',
+                  child: TextButton.icon(
+                    onPressed: () => controller.toggleLike(post.id),
+                    style: post.isLiked
+                        ? TextButton.styleFrom(
+                            foregroundColor: AppColors.danger,
+                            backgroundColor: AppColors.danger.withOpacity(0.08),
+                          )
+                        : null,
+                    icon: Icon(
+                      post.isLiked
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      size: 18,
+                    ),
+                    label: Text('${post.likeCount}'),
                   ),
-                  label: Text('${post.likeCount}'),
                 ),
-                TextButton.icon(
-                  onPressed: () => _showComments(context),
-                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-                  label: Text('${post.commentCount}'),
+                Tooltip(
+                  message: 'View comments',
+                  child: TextButton.icon(
+                    onPressed: () => _showComments(context),
+                    icon: const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 18,
+                    ),
+                    label: Text('${post.commentCount}'),
+                  ),
                 ),
                 const Spacer(),
-                TextButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.share_outlined, size: 18),
-                  label: const Text('Share'),
+                Tooltip(
+                  message: 'Share post',
+                  child: TextButton.icon(
+                    onPressed: () => _showShareOptions(context),
+                    icon: const Icon(Icons.share_outlined, size: 18),
+                    label: const Text('Share'),
+                  ),
                 ),
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CommentsSheet extends StatefulWidget {
+  const _CommentsSheet({required this.post, required this.onSubmit});
+
+  final CommunityPost post;
+  final Future<CommunityPost?> Function(String body) onSubmit;
+
+  @override
+  State<_CommentsSheet> createState() => _CommentsSheetState();
+}
+
+class _CommentsSheetState extends State<_CommentsSheet> {
+  final _textController = TextEditingController();
+  late CommunityPost _post = widget.post;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final value = _textController.text.trim();
+    if (value.isEmpty || _isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    final updated = await widget.onSubmit(value);
+    if (!mounted) return;
+    setState(() {
+      _isSubmitting = false;
+      if (updated != null) _post = updated;
+    });
+    if (updated != null) _textController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final availableHeight = media.size.height - media.viewInsets.bottom - 36;
+    final sheetHeight = availableHeight.clamp(320.0, media.size.height * 0.78);
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+      child: Container(
+        height: sheetHeight,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 10, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Comments',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${_post.commentCount} replies',
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Close comments',
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: _post.comments.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(28),
+                          child: Text(
+                            'No comments yet. Start the conversation.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: AppColors.muted),
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(18),
+                        itemCount: _post.comments.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 14),
+                        itemBuilder: (_, index) =>
+                            _CommentTile(comment: _post.comments[index]),
+                      ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _textController,
+                        minLines: 1,
+                        maxLines: 3,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          hintText: 'Write a helpful reply...',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      tooltip: 'Post reply',
+                      onPressed: _isSubmitting ? null : _submit,
+                      icon: _isSubmitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.arrow_upward_rounded),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CommentTile extends StatelessWidget {
+  const _CommentTile({required this.comment});
+
+  final CommunityComment comment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 18,
+          backgroundColor: AppColors.primary.withOpacity(0.1),
+          child: Text(
+            comment.author.characters.first,
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF4F7FC),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        comment.author,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    Text(
+                      CommunityVisuals.relativeTime(comment.createdAt),
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(comment.body, style: const TextStyle(height: 1.4)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+enum _PostShareAction { whatsApp, copy, email }
+
+class _PostShareSheet extends StatelessWidget {
+  const _PostShareSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 2, 18, 20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Share post', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 5),
+              const Text(
+                'Share this discussion outside Job Sensei.',
+                style: TextStyle(color: AppColors.muted),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                onTap: () => Navigator.pop(context, _PostShareAction.whatsApp),
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFE8F8EE),
+                  child: Icon(Icons.chat_rounded, color: Color(0xFF128C4A)),
+                ),
+                title: const Text('WhatsApp'),
+                subtitle: const Text('Share the post text in WhatsApp'),
+                trailing: const Icon(Icons.arrow_forward_rounded),
+              ),
+              ListTile(
+                onTap: () => Navigator.pop(context, _PostShareAction.copy),
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFEAF3FF),
+                  child: Icon(Icons.copy_rounded, color: AppColors.primary),
+                ),
+                title: const Text('Copy post text'),
+                subtitle: const Text('Paste it into any app'),
+                trailing: const Icon(Icons.arrow_forward_rounded),
+              ),
+              ListTile(
+                onTap: () => Navigator.pop(context, _PostShareAction.email),
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFF3ECFF),
+                  child:
+                      Icon(Icons.mail_outline_rounded, color: AppColors.violet),
+                ),
+                title: const Text('Email'),
+                subtitle: const Text('Open your email app'),
+                trailing: const Icon(Icons.arrow_forward_rounded),
+              ),
+            ],
+          ),
         ),
       ),
     );

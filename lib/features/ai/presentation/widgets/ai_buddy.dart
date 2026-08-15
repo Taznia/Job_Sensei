@@ -78,21 +78,26 @@ class _AiBuddyState extends State<AiBuddy> with TickerProviderStateMixin {
                 : -0.12 + math.sin(phase) * 0.08;
             return Stack(
               clipBehavior: Clip.none,
-              alignment: Alignment.centerLeft,
+              alignment: Alignment.center,
               children: [
                 Transform.translate(
                   offset: Offset(0, lift),
-                  child: _BuddyBody(
-                    size: widget.size,
-                    isThinking: widget.isThinking,
-                    eyeOpenness: blink,
-                    waveAngle: wave,
-                    pulse: 0.5 + 0.5 * math.sin(phase),
+                  child: KeyedSubtree(
+                    key: widget.showGreeting
+                        ? const ValueKey('momo-welcome-body')
+                        : null,
+                    child: _BuddyBody(
+                      size: widget.size,
+                      isThinking: widget.isThinking,
+                      eyeOpenness: blink,
+                      waveAngle: wave,
+                      pulse: 0.5 + 0.5 * math.sin(phase),
+                    ),
                   ),
                 ),
                 if (widget.showGreeting)
                   Positioned(
-                    left: widget.size * 0.92,
+                    left: widget.size * 1.28,
                     top: widget.size * 0.02,
                     child: FadeTransition(
                       opacity: CurvedAnimation(
@@ -107,7 +112,10 @@ class _AiBuddyState extends State<AiBuddy> with TickerProviderStateMixin {
                             curve: Curves.elasticOut,
                           ),
                         ),
-                        child: const _GreetingBubble(),
+                        child: SizedBox(
+                          width: widget.size * 1.22,
+                          child: const _GreetingBubble(),
+                        ),
                       ),
                     ),
                   ),

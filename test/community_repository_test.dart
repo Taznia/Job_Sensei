@@ -60,5 +60,21 @@ void main() {
       expect(post.attachments.single.name, 'career-guide.pdf');
       expect(post.attachments.single.kind, AttachmentKind.document);
     });
+
+    test('comments are visible and new replies are preserved', () async {
+      final repository = InMemoryCommunityRepository();
+      final before = (await repository.loadCommunity()).posts.first;
+
+      expect(before.comments, isNotEmpty);
+      final updated = await repository.addComment(
+        postId: before.id,
+        body: 'A new helpful reply.',
+      );
+
+      expect(updated.commentCount, before.commentCount + 1);
+      expect(updated.comments.length, before.comments.length + 1);
+      expect(updated.comments.last.author, 'Taznia');
+      expect(updated.comments.last.body, 'A new helpful reply.');
+    });
   });
 }
