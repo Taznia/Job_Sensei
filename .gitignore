@@ -15,3 +15,7 @@ build/
 **/xcuserdata/
 .flutter-plugins
 .flutter-plugins-dependencies
+
+# Figma tooling — token file is secret, pulled output is regenerable
+.figma.env
+tool/figma_out/

@@ -9,7 +9,7 @@ import '../features/jobs/jobs_page.dart';
 import '../features/learning/presentation/screens/learning_resources_screen.dart';
 import '../features/learning/presentation/screens/skill_gap_screen.dart';
 import '../features/notifications/notifications_page.dart';
-import '../features/profile/profile_page.dart';
+import '../features/profile/presentation/screens/career_profile_screen.dart';
 import '../features/resumes/resumes_page.dart';
 import 'injector.dart';
 
@@ -31,7 +31,9 @@ abstract final class AppRouter {
     final builder = switch (settings.name) {
       home => (_) => const AppShell(),
       authentication => (_) => const AuthenticationPage(),
-      profile => (_) => const ProfilePage(),
+      profile => (_) => CareerProfileScreen(
+            repository: Injector.careerProfileRepository(),
+          ),
       jobs => (_) => const JobsPage(),
       resumes => (_) => const ResumesPage(),
       applications => (_) => const ApplicationsPage(),
@@ -82,6 +84,11 @@ class _AppShellState extends State<AppShell> {
       selectedIcon: Icon(Icons.school_rounded),
       label: 'Learn',
     ),
+    NavigationDestination(
+      icon: Icon(Icons.person_outline_rounded),
+      selectedIcon: Icon(Icons.person_rounded),
+      label: 'Profile',
+    ),
   ];
 
   late final List<Widget> _screens = [
@@ -93,6 +100,7 @@ class _AppShellState extends State<AppShell> {
     ),
     const SkillGapScreen(),
     const LearningResourcesScreen(),
+    CareerProfileScreen(repository: Injector.careerProfileRepository()),
   ];
 
   @override
