@@ -12,6 +12,8 @@ coverage/
 *.ipr
 *.iws
 build/
+android/local.properties
+**/ephemeral/
 *.apk
 .env
 **/DerivedData/
