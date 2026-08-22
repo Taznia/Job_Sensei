@@ -9,7 +9,7 @@ import '../features/jobs/jobs_page.dart';
 import '../features/learning/presentation/screens/learning_resources_screen.dart';
 import '../features/learning/presentation/screens/skill_gap_screen.dart';
 import '../features/notifications/notifications_page.dart';
-import '../features/profile/profile_page.dart';
+import '../features/profile/presentation/screens/career_profile_screen.dart';
 import '../features/resumes/resumes_page.dart';
 import '../core/constants/app_colors.dart';
 import 'injector.dart';
@@ -32,7 +32,9 @@ abstract final class AppRouter {
     final builder = switch (settings.name) {
       home => (_) => const AppShell(),
       authentication => (_) => const AuthenticationPage(),
-      profile => (_) => const ProfilePage(),
+      profile => (_) => CareerProfileScreen(
+            repository: Injector.careerProfileRepository(),
+          ),
       jobs => (_) => const JobsPage(),
       resumes => (_) => const ResumesPage(),
       applications => (_) => const ApplicationsPage(),
@@ -70,12 +72,32 @@ class _NavItem {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
 
-  static const _items = [
-    _NavItem('Community', Icons.groups_2_outlined, Icons.groups_2_rounded),
-    _NavItem('Sensei', Icons.auto_awesome_outlined, Icons.auto_awesome_rounded),
-    _NavItem('Skills', Icons.donut_large_outlined, Icons.donut_large_rounded),
-    _NavItem('Learn', Icons.school_outlined, Icons.school_rounded),
-    _NavItem('Profile', Icons.person_outline_rounded, Icons.person_rounded),
+  static const _destinations = [
+    NavigationDestination(
+      icon: Icon(Icons.groups_2_outlined),
+      selectedIcon: Icon(Icons.groups_2_rounded),
+      label: 'Community',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.auto_awesome_outlined),
+      selectedIcon: Icon(Icons.auto_awesome_rounded),
+      label: 'AI Sensei',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.donut_large_outlined),
+      selectedIcon: Icon(Icons.donut_large_rounded),
+      label: 'Skill Gap',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.school_outlined),
+      selectedIcon: Icon(Icons.school_rounded),
+      label: 'Learn',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.person_outline_rounded),
+      selectedIcon: Icon(Icons.person_rounded),
+      label: 'Profile',
+    ),
   ];
 
   late final List<Widget> _screens = [
@@ -87,7 +109,7 @@ class _AppShellState extends State<AppShell> {
     ),
     const SkillGapScreen(),
     const LearningResourcesScreen(),
-    const ProfilePage(),
+    CareerProfileScreen(repository: Injector.careerProfileRepository()),
   ];
 
   @override
