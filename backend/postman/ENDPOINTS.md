@@ -385,8 +385,15 @@ const [companies, locations, skills, salary] = await Promise.all([
 
 ## Capturing the Postman screenshots
 
-The assignment wants one screenshot per API. `CSE471_API_Postman_Adreed_22301190.docx`
-already has nine placeholder boxes in the right places — capture, then paste.
+The submission document `CSE471_API_Postman_Adreed_22301190.docx` has two
+placeholder boxes — one per feature, matching the format the group is using.
+The nine endpoints documented above are the full API; the two captured below
+are the ones in the submitted document.
+
+Captured for the submission:
+
+- **Feature 1:** `GET /api/career-profile/me`
+- **Feature 2:** `GET /api/jobs/search?q=frontend&experienceLevel=senior`
 
 ### Before you start
 
