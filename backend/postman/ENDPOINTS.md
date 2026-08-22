@@ -380,3 +380,75 @@ const [companies, locations, skills, salary] = await Promise.all([
 | 1.7 | GET | `/api/career-profile/me/completeness` | Bearer |
 | 2.1 | GET | `/api/jobs/search` | Optional |
 | 2.2 | GET | `/api/jobs/search/filters` | None |
+
+---
+
+## Capturing the Postman screenshots
+
+The assignment wants one screenshot per API. `CSE471_API_Postman_Adreed_22301190.docx`
+already has nine placeholder boxes in the right places — capture, then paste.
+
+### Before you start
+
+1. `backend/.env` must contain `PORT=1190` and a working `MONGODB_URI`.
+2. Run `npm run seed` once, so the job search returns real rows instead of an
+   empty list.
+3. `npm start`, then confirm the port in a browser:
+   `http://127.0.0.1:1190/api/health`
+4. In Postman, **Import** → `JobSensei_Adreed_22301190.postman_collection.json`.
+
+### Run order matters
+
+Run **Setup → Login** first. It stores the JWT in `{{token}}`; without it every
+Career Profile request returns 401.
+
+Then run the Career Profile requests **in order 1.1 → 1.7**. Request 1.4 (add
+education) captures the new entry's `_id` into `{{educationEntryId}}`, which
+1.5 and 1.6 both use. Screenshot them out of order and you will capture 404s.
+
+### What each screenshot must show
+
+Snip the **whole Postman window**, not just the response pane, so all four
+things the assignment asks for are visible in one image:
+
+- the HTTP method and the full URL including `:1190`
+- the request body (for PUT and POST) — click the **Body** tab before capturing
+- the response body — set the viewer to **Pretty**
+- the status code and response time, top-right of the response pane
+
+For GET requests with query parameters, open the **Params** tab so the grader
+can see which filters were applied.
+
+### Taking the shot on Windows
+
+Press **Win + Shift + S**, drag a rectangle around the Postman window, and the
+image goes straight to your clipboard. Click the placeholder box in the Word
+document and press **Ctrl + V**. Delete the placeholder text after pasting.
+
+(`Win + PrtScn` also works and saves full-screen captures into
+`Pictures\Screenshots`, but the snip is tidier.)
+
+### Expected status codes
+
+| API | Expected |
+|---|---|
+| 1.1 Get profile | 200 |
+| 1.2 Update basics | 200 |
+| 1.3 Update preferences | 200 |
+| 1.4 Add section entry | **201** |
+| 1.5 Update section entry | 200 |
+| 1.6 Delete section entry | 200 |
+| 1.7 Completeness | 200 |
+| 2.1 Search jobs | 200 |
+| 2.2 Filter options | 200 |
+
+A 401 anywhere in Feature 1 means the token expired — re-run Login. A 404 on
+1.5 or 1.6 means `{{educationEntryId}}` is empty, so re-run 1.4.
+
+### Worth showing off
+
+Grading tends to reward evidence that the filters actually work. The collection
+includes two extra saved examples of API 2.1 with different parameters
+(salary + experience level, and remote-only). Capturing one of those alongside
+the main search shows the same endpoint responding differently to different
+filters, which is the whole point of Module 3.
