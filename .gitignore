@@ -14,6 +14,11 @@ coverage/
 build/
 android/local.properties
 **/ephemeral/
+**/GeneratedPluginRegistrant.*
+**/generated_plugin_registrant.*
+**/generated_plugins.cmake
+**/Generated.xcconfig
+**/flutter_export_environment.sh
 *.apk
 .env
 **/DerivedData/
