@@ -1,0 +1,329 @@
+{
+  "info": {
+    "name": "Job Sensei — Adreed Saadad Hasan (22301190)",
+    "description": "CSE471 Lab Assignment on API Postman Collection.\n\nGroup 8, Section 02. Backend: Node.js + Express + MongoDB Atlas.\n\nFeature 1 — Career Profile (Module 1)\nFeature 2 — Job Search (Module 3)\n\nHow to use:\n1. Start the server with PORT=1190 in backend/.env, then `npm run seed` once.\n2. Run \"Setup / Login\" first. It stores the JWT in the collection variable {{token}}, which every Career Profile request sends as an Authorization header.\n3. Run \"Add education entry\" before the update/delete requests — it captures the new entry id into {{educationEntryId}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:1190/api",
+      "description": "Port 1190 = last four digits of student ID 22301190."
+    },
+    { "key": "token", "value": "" },
+    { "key": "educationEntryId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "Login (stores {{token}})",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('login returns a token', function () {",
+                  "  pm.expect(body.success).to.eql(true);",
+                  "  pm.expect(body.data.token).to.be.a('string');",
+                  "});",
+                  "pm.collectionVariables.set('token', body.data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo@jobsensei.app\",\n  \"password\": \"Demo123!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Seeded job-seeker account. Not part of the submitted feature set — it only supplies the token the Career Profile endpoints require."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feature 1 — Career Profile (Module 1)",
+      "item": [
+        {
+          "name": "1. Get my career profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/career-profile/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["career-profile", "me"]
+            },
+            "description": "Returns the full career profile — education, experience, skills, certifications, portfolio links, preferences, career goals — plus a computed completeness score.\n\nCreates the profile from the existing user record on first call, so a new account never 404s here."
+          }
+        },
+        {
+          "name": "2. Update profile basics",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Adreed Saadad Hasan\",\n  \"headline\": \"Flutter Developer • Building for mobile-first teams\",\n  \"location\": \"Dhaka, Bangladesh\",\n  \"phone\": \"+880 1712 345678\",\n  \"about\": \"Mobile engineer with a product mindset.\",\n  \"careerGoals\": \"Move into a senior mobile role within two years, leading a small team.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/career-profile/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["career-profile", "me"]
+            },
+            "description": "Updates the identity fields. Send an optional field as null to clear it — phone, location, about, careerGoals and avatarUrl are all nullable. fullName and email cannot be emptied."
+          }
+        },
+        {
+          "name": "3. Update job preferences",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preferredRoles\": [\"Flutter Developer\", \"Mobile Engineer\"],\n  \"preferredLocations\": [\"Dhaka\", \"Remote\"],\n  \"workModes\": [\"hybrid\", \"remote\"],\n  \"employmentTypes\": [\"full-time\", \"contract\"],\n  \"salary\": {\n    \"min\": 70000,\n    \"max\": 110000,\n    \"currency\": \"BDT\",\n    \"period\": \"monthly\"\n  },\n  \"openToRelocation\": true,\n  \"availableFrom\": \"2026-09-01\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/career-profile/me/preferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["career-profile", "me", "preferences"]
+            },
+            "description": "Replaces the preferences object wholesale, because the form always submits it complete — a partial merge would make removing a role impossible.\n\nRejects salary.max below salary.min with a 400."
+          }
+        },
+        {
+          "name": "4. Add education entry",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('entry created', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.expect(body.data.entry._id).to.be.a('string');",
+                  "});",
+                  "pm.collectionVariables.set('educationEntryId', body.data.entry._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"institution\": \"BRAC University\",\n  \"degree\": \"BSc\",\n  \"fieldOfStudy\": \"Computer Science and Engineering\",\n  \"startDate\": \"2022-01-01\",\n  \"endDate\": \"2026-06-30\",\n  \"grade\": \"CGPA 3.72 / 4.00\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/career-profile/me/sections/education",
+              "host": ["{{baseUrl}}"],
+              "path": ["career-profile", "me", "sections", "education"]
+            },
+            "description": "One generic route serves all five list sections. Replace `education` in the path with `experience`, `skills`, `certifications`, or `portfolio-links` — each has its own validation shape.\n\nReturns 201 with the created entry and the recalculated completeness."
+          }
+        },
+        {
+          "name": "5. Update education entry",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grade\": \"CGPA 3.85 / 4.00\",\n  \"isCurrent\": true,\n  \"endDate\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/career-profile/me/sections/education/{{educationEntryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "career-profile",
+                "me",
+                "sections",
+                "education",
+                "{{educationEntryId}}"
+              ]
+            },
+            "description": "Partial update — send only the fields that changed. Run request 4 first; it fills {{educationEntryId}}.\n\nMarking an entry current clears its end date, which is why endDate is nullable."
+          }
+        },
+        {
+          "name": "6. Delete education entry",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/career-profile/me/sections/education/{{educationEntryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "career-profile",
+                "me",
+                "sections",
+                "education",
+                "{{educationEntryId}}"
+              ]
+            },
+            "description": "Removes one entry and returns the remaining count plus the recalculated completeness. 404s on an id that is not in this profile."
+          }
+        },
+        {
+          "name": "7. Get profile completeness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/career-profile/me/completeness",
+              "host": ["{{baseUrl}}"],
+              "path": ["career-profile", "me", "completeness"]
+            },
+            "description": "Weighted score out of 100 plus the still-empty sections, ordered by how much each would improve job matching. Skills and preferences carry 20 each; portfolio links carry 5."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feature 2 — Job Search (Module 3)",
+      "item": [
+        {
+          "name": "1. Search jobs (all filters)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/search?q=frontend&page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "frontend",
+                  "description": "Full-text search across title, company and description."
+                },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10", "description": "Max 50." },
+                {
+                  "key": "company",
+                  "value": "Northwind",
+                  "disabled": true
+                },
+                { "key": "location", "value": "Remote", "disabled": true },
+                {
+                  "key": "skill",
+                  "value": "React,TypeScript",
+                  "description": "Comma-separated; matches any.",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "full-time",
+                  "description": "full-time | part-time | contract | internship",
+                  "disabled": true
+                },
+                {
+                  "key": "workMode",
+                  "value": "remote",
+                  "description": "onsite | remote | hybrid",
+                  "disabled": true
+                },
+                {
+                  "key": "experienceLevel",
+                  "value": "senior",
+                  "description": "entry | junior | mid | senior | lead",
+                  "disabled": true
+                },
+                { "key": "salaryMin", "value": "80000", "disabled": true },
+                { "key": "salaryMax", "value": "150000", "disabled": true },
+                {
+                  "key": "remote",
+                  "value": "true",
+                  "description": "Shorthand for workMode=remote.",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "relevance",
+                  "description": "relevance | newest | salary | title",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Module 3's searchable job list. Filters by title, company, skill, location, salary range, job type, experience level, and remote/on-site, and returns the most relevant results first.\n\nEnable the disabled params to demonstrate each filter. Response carries total, page, limit, pages, the sort actually applied, and the filters that were recognised."
+          }
+        },
+        {
+          "name": "2. Get filter options",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/search/filters",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "search", "filters"]
+            },
+            "description": "Distinct companies, locations and skills actually present in open jobs, plus the enum lists and the real salary floor and ceiling. Feeds the filter sheet so it only offers values that match something."
+          }
+        },
+        {
+          "name": "Example: filter by salary + experience level",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/search?salaryMin=100000&experienceLevel=senior&sort=salary",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "search"],
+              "query": [
+                { "key": "salaryMin", "value": "100000" },
+                { "key": "experienceLevel", "value": "senior" },
+                { "key": "sort", "value": "salary" }
+              ]
+            },
+            "description": "Same endpoint as request 1, different parameters. Note salaryMin matches a job whose upper bound clears the floor, so a 90k–140k job still appears for a 100k request."
+          }
+        },
+        {
+          "name": "Example: remote only, newest first",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/search?remote=true&sort=newest",
+              "host": ["{{baseUrl}}"],
+              "path": ["jobs", "search"],
+              "query": [
+                { "key": "remote", "value": "true" },
+                { "key": "sort", "value": "newest" }
+              ]
+            },
+            "description": "Same endpoint as request 1. Demonstrates the remote/on-site filter and an explicit sort override."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -15,6 +15,15 @@ const jobSchema = new mongoose.Schema(
       enum: ['onsite', 'remote', 'hybrid'],
       default: 'hybrid',
     },
+    // Added for Module 3 job search (filter by experience level). Optional with
+    // a default, so existing documents and the recruiter create/update flows
+    // keep working without change.
+    experienceLevel: {
+      type: String,
+      enum: ['entry', 'junior', 'mid', 'senior', 'lead'],
+      default: 'mid',
+      index: true,
+    },
     description: { type: String, required: true },
     requirements: { type: [String], default: [] },
     skills: { type: [String], default: [] },

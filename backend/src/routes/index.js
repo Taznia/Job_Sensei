@@ -6,9 +6,11 @@ import { validate } from '../middleware/validate.js';
 import * as admin from '../controllers/admin.controller.js';
 import * as applications from '../controllers/applications.controller.js';
 import * as auth from '../controllers/auth.controller.js';
+import * as careerProfile from '../controllers/careerProfile.controller.js';
 import * as communities from '../controllers/communities.controller.js';
 import * as files from '../controllers/files.controller.js';
 import * as jobs from '../controllers/jobs.controller.js';
+import * as jobSearch from '../controllers/jobSearch.controller.js';
 import * as learning from '../controllers/learning.controller.js';
 import * as notifications from '../controllers/notifications.controller.js';
 import * as posts from '../controllers/posts.controller.js';
@@ -40,9 +42,23 @@ api.get('/users/me', requireAuth, users.getMe);
 api.patch('/users/me', requireAuth, validate(users.updateMeSchema), users.updateMe);
 api.get('/users/:id', users.getUser);
 
+// Module 1 career profile (22301190). All routes act on the caller's own
+// profile, so there is no userId in the path.
+api.get('/career-profile/me', requireAuth, careerProfile.getMyProfile);
+api.put('/career-profile/me', requireAuth, validate(careerProfile.updateBasicsSchema), careerProfile.updateBasics);
+api.get('/career-profile/me/completeness', requireAuth, careerProfile.getCompleteness);
+api.put('/career-profile/me/preferences', requireAuth, validate(careerProfile.updatePreferencesSchema), careerProfile.updatePreferences);
+api.post('/career-profile/me/sections/:section', requireAuth, validate(careerProfile.sectionCreateSchema), careerProfile.addSectionEntry);
+api.put('/career-profile/me/sections/:section/:entryId', requireAuth, validate(careerProfile.sectionUpdateSchema), careerProfile.updateSectionEntry);
+api.delete('/career-profile/me/sections/:section/:entryId', requireAuth, validate(careerProfile.sectionDeleteSchema), careerProfile.deleteSectionEntry);
+
 api.get('/jobs', optionalAuth, jobs.listJobs);
 api.get('/jobs/recommended', requireAuth, jobs.recommendedJobs);
 api.get('/jobs/saved', requireAuth, jobs.savedJobs);
+// Module 3 job search (22301190). Declared before /jobs/:id so "search" is
+// not matched as a job id.
+api.get('/jobs/search', optionalAuth, validate(jobSearch.searchJobsSchema), jobSearch.searchJobs);
+api.get('/jobs/search/filters', jobSearch.getFilterOptions);
 api.get('/jobs/:id', optionalAuth, jobs.getJob);
 api.post('/jobs/:id/save', requireAuth, jobs.saveJob);
 api.delete('/jobs/:id/save', requireAuth, jobs.unsaveJob);

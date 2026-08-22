@@ -103,6 +103,7 @@ async function seed() {
       location: 'Remote',
       type: 'full-time',
       workMode: 'remote',
+      experienceLevel: 'senior',
       description:
         'Own complex React surfaces, design system work, and frontend architecture for a career product used by thousands of job seekers.',
       requirements: ['5+ years frontend', 'TypeScript', 'System design interviews'],
@@ -117,6 +118,7 @@ async function seed() {
       location: 'Singapore',
       type: 'full-time',
       workMode: 'hybrid',
+      experienceLevel: 'mid',
       description:
         'Drive discovery, roadmapping, and analytics for a job-matching marketplace.',
       requirements: ['Product analytics', 'Roadmapping', 'Stakeholder management'],
@@ -131,6 +133,7 @@ async function seed() {
       location: 'Dhaka',
       type: 'full-time',
       workMode: 'onsite',
+      experienceLevel: 'junior',
       description:
         'Build ranking and recommendation models that help candidates find better-fit roles.',
       requirements: ['Python', 'SQL', 'Machine learning'],
