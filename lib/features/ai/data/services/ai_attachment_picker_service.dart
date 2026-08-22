@@ -1,37 +1,35 @@
 import 'package:file_picker/file_picker.dart';
 
+import '../../../../core/media/app_image_picker.dart';
 import '../../../../shared/models/chat_message.dart';
 
 abstract interface class AiAttachmentPickerService {
   Future<List<PendingChatAttachment>> pickImages();
+
+  Future<List<PendingChatAttachment>> pickCamera();
 
   Future<List<PendingChatAttachment>> pickDocuments();
 }
 
 class FilePickerAiAttachmentService implements AiAttachmentPickerService {
   @override
-  Future<List<PendingChatAttachment>> pickImages() {
-    return _pick(kind: ChatAttachmentKind.image, type: FileType.image);
+  Future<List<PendingChatAttachment>> pickImages() async {
+    final images = await AppImagePicker.pickFromGallery();
+    return images.map(_toAttachment).toList();
   }
 
   @override
-  Future<List<PendingChatAttachment>> pickDocuments() {
-    return _pick(
-      kind: ChatAttachmentKind.document,
-      type: FileType.custom,
-      allowedExtensions: const ['pdf', 'txt', 'doc', 'docx'],
-    );
+  Future<List<PendingChatAttachment>> pickCamera() async {
+    final images = await AppImagePicker.pickFromCamera();
+    return images.map(_toAttachment).toList();
   }
 
-  Future<List<PendingChatAttachment>> _pick({
-    required ChatAttachmentKind kind,
-    required FileType type,
-    List<String>? allowedExtensions,
-  }) async {
+  @override
+  Future<List<PendingChatAttachment>> pickDocuments() async {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
-      type: type,
-      allowedExtensions: allowedExtensions,
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'txt', 'doc', 'docx'],
       withData: true,
     );
     if (result == null) return const [];
@@ -39,8 +37,8 @@ class FilePickerAiAttachmentService implements AiAttachmentPickerService {
     return result.files.map((file) {
       return PendingChatAttachment(
         name: file.name,
-        mimeType: _mimeType(file.extension, kind),
-        kind: kind,
+        mimeType: _documentMime(file.extension),
+        kind: ChatAttachmentKind.document,
         sizeBytes: file.size,
         localPath: file.path,
         bytes: file.bytes,
@@ -48,17 +46,24 @@ class FilePickerAiAttachmentService implements AiAttachmentPickerService {
     }).toList();
   }
 
-  String _mimeType(String? extension, ChatAttachmentKind kind) {
+  PendingChatAttachment _toAttachment(PickedAppImage image) {
+    return PendingChatAttachment(
+      name: image.name,
+      mimeType: image.mimeType,
+      kind: ChatAttachmentKind.image,
+      sizeBytes: image.sizeBytes,
+      localPath: image.localPath,
+      bytes: image.bytes,
+    );
+  }
+
+  String _documentMime(String? extension) {
     return switch (extension?.toLowerCase()) {
-      'png' => 'image/png',
-      'gif' => 'image/gif',
-      'webp' => 'image/webp',
       'pdf' => 'application/pdf',
       'txt' => 'text/plain',
       'doc' => 'application/msword',
       'docx' =>
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      _ when kind == ChatAttachmentKind.image => 'image/jpeg',
       _ => 'application/octet-stream',
     };
   }

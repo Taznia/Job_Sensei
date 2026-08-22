@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/constants/app_colors.dart';
@@ -13,6 +14,7 @@ abstract final class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      splashFactory: kIsWeb ? InkRipple.splashFactory : null,
       colorScheme: scheme,
       scaffoldBackgroundColor: AppColors.background,
       fontFamily: 'Georgia',
@@ -46,7 +48,7 @@ abstract final class AppTheme {
           fontWeight: FontWeight.w800,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 0,
         margin: EdgeInsets.zero,
@@ -83,6 +85,14 @@ abstract final class AppTheme {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
+      ),
+      navigationBarTheme: const NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        height: 56,
+        indicatorColor: Colors.transparent,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        surfaceTintColor: Colors.transparent,
       ),
       chipTheme: ChipThemeData(
         backgroundColor: const Color(0xFFEDF4FF),

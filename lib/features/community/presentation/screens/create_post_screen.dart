@@ -40,12 +40,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     super.dispose();
   }
 
-  Future<void> _pick(AttachmentKind kind) async {
+  Future<void> _pick(AttachmentKind kind, {bool camera = false}) async {
     if (_attachments.length >= _maxAttachments || _pickingFile) return;
     setState(() => _pickingFile = true);
     try {
       final picked = kind == AttachmentKind.image
-          ? await _attachmentPicker.pickImages()
+          ? (camera
+              ? await _attachmentPicker.pickCamera()
+              : await _attachmentPicker.pickImages())
           : await _attachmentPicker.pickDocuments();
       if (!mounted || picked.isEmpty) {
         return;
@@ -185,8 +187,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               children: [
                 Expanded(
                   child: _AttachmentButton(
-                    icon: Icons.add_photo_alternate_outlined,
-                    label: 'Photo',
+                    icon: Icons.photo_library_outlined,
+                    label: 'Gallery',
                     color: AppColors.primary,
                     enabled:
                         !_pickingFile && _attachments.length < _maxAttachments,
@@ -196,8 +198,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _AttachmentButton(
+                    icon: Icons.photo_camera_outlined,
+                    label: 'Camera',
+                    color: AppColors.cyan,
+                    enabled:
+                        !_pickingFile && _attachments.length < _maxAttachments,
+                    onPressed: () =>
+                        _pick(AttachmentKind.image, camera: true),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _AttachmentButton(
                     icon: Icons.attach_file_rounded,
-                    label: 'Document',
+                    label: 'File',
                     color: AppColors.violet,
                     enabled:
                         !_pickingFile && _attachments.length < _maxAttachments,

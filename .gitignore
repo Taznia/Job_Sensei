@@ -10,6 +10,7 @@ coverage/
 *.iws
 build/
 *.apk
+.env
 **/DerivedData/
 **/Pods/
 **/xcuserdata/

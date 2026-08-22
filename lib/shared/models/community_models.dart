@@ -18,6 +18,24 @@ class CommunityGroup {
     this.isJoined = false,
   });
 
+  factory CommunityGroup.fromJson(Map<String, dynamic> json) {
+    return CommunityGroup(
+      id: json['id'] as String,
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      category: json['category'] as String? ?? '',
+      visualKey: json['visualKey'] as String? ?? 'code',
+      memberCount: (json['memberCount'] as num?)?.toInt() ?? 0,
+      privacy: json['privacy'] == 'private'
+          ? CommunityPrivacy.private
+          : CommunityPrivacy.public,
+      createdById: json['createdById'] as String? ?? '',
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
+      isJoined: json['isJoined'] == true,
+    );
+  }
+
   final String id;
   final String name;
   final String description;
@@ -58,6 +76,19 @@ class CommunityAttachment {
     this.localPath,
   });
 
+  factory CommunityAttachment.fromJson(Map<String, dynamic> json) {
+    return CommunityAttachment(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      kind: json['kind'] == 'image'
+          ? AttachmentKind.image
+          : AttachmentKind.document,
+      sizeBytes: (json['sizeBytes'] as num?)?.toInt() ?? 0,
+      url: json['url'] as String?,
+      localPath: json['localPath'] as String?,
+    );
+  }
+
   final String id;
   final String name;
   final AttachmentKind kind;
@@ -96,6 +127,17 @@ class CommunityComment {
     required this.createdAt,
   });
 
+  factory CommunityComment.fromJson(Map<String, dynamic> json) {
+    return CommunityComment(
+      id: json['id'] as String,
+      authorId: json['authorId'] as String? ?? '',
+      author: json['author'] as String? ?? '',
+      body: json['body'] as String? ?? '',
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
+    );
+  }
+
   final String id;
   final String authorId;
   final String author;
@@ -120,6 +162,32 @@ class CommunityPost {
     this.isLiked = false,
     this.isFollowed = false,
   });
+
+  factory CommunityPost.fromJson(Map<String, dynamic> json) {
+    return CommunityPost(
+      id: json['id'] as String,
+      authorId: json['authorId'] as String? ?? '',
+      author: json['author'] as String? ?? '',
+      role: json['role'] as String? ?? '',
+      body: json['body'] as String? ?? '',
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
+      tags: (json['tags'] as List<dynamic>? ?? []).cast<String>(),
+      communityId: json['communityId'] as String?,
+      attachments: (json['attachments'] as List<dynamic>? ?? [])
+          .map((item) =>
+              CommunityAttachment.fromJson(item as Map<String, dynamic>))
+          .toList(),
+      comments: (json['comments'] as List<dynamic>? ?? [])
+          .map((item) =>
+              CommunityComment.fromJson(item as Map<String, dynamic>))
+          .toList(),
+      likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
+      commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
+      isLiked: json['isLiked'] == true,
+      isFollowed: json['isFollowed'] == true,
+    );
+  }
 
   final String id;
   final String authorId;

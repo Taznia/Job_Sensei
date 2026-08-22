@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../../shared/models/chat_message.dart';
 import '../../data/services/gemini_chat_service.dart';
 import '../../domain/repositories/chat_history_repository.dart';
@@ -19,6 +20,9 @@ class AiChatController extends ChangeNotifier {
   bool _isLoading = false;
   bool _isSending = false;
   String? _errorMessage;
+
+  bool get isGeminiConfigured =>
+      _chatService.isConfigured || AppConfig.isGeminiConfigured;
 
   List<ChatConversation> get conversations => List.unmodifiable(
         [..._conversations]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt)),
@@ -40,11 +44,29 @@ class AiChatController extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      _conversations = await _historyRepository.loadConversations();
+      final loaded = await _historyRepository.loadConversations();
+      final nonempty =
+          loaded.where((item) => item.messages.isNotEmpty).toList();
+      final empty = loaded.where((item) => item.messages.isEmpty).toList();
       _errorMessage = null;
-      await createConversation();
+
+      if (nonempty.isNotEmpty) {
+        for (final conversation in empty) {
+          await _historyRepository.deleteConversation(conversation.id);
+        }
+        _conversations = nonempty;
+        _activeConversationId = nonempty.first.id;
+      } else if (empty.isNotEmpty) {
+        _conversations = [empty.first];
+        _activeConversationId = empty.first.id;
+        for (final conversation in empty.skip(1)) {
+          await _historyRepository.deleteConversation(conversation.id);
+        }
+      } else {
+        await createConversation();
+      }
     } catch (_) {
-      _errorMessage = 'Could not load your previous chats.';
+      _errorMessage = 'Could not load saved chats. New chats still work.';
       await createConversation(persist: false);
     } finally {
       _isLoading = false;
@@ -64,7 +86,13 @@ class AiChatController extends ChangeNotifier {
     _conversations = [conversation, ..._conversations];
     _activeConversationId = conversation.id;
     notifyListeners();
-    if (persist) await _historyRepository.saveConversation(conversation);
+    if (persist) {
+      try {
+        await _historyRepository.saveConversation(conversation);
+      } catch (_) {
+        _errorMessage = 'Chat will not be saved on this device right now.';
+      }
+    }
   }
 
   void selectConversation(String conversationId) {
@@ -75,7 +103,9 @@ class AiChatController extends ChangeNotifier {
   }
 
   Future<void> deleteConversation(String conversationId) async {
-    await _historyRepository.deleteConversation(conversationId);
+    try {
+      await _historyRepository.deleteConversation(conversationId);
+    } catch (_) {}
     _conversations = _conversations
         .where((conversation) => conversation.id != conversationId)
         .toList();
@@ -132,7 +162,7 @@ class AiChatController extends ChangeNotifier {
     _isSending = true;
     _errorMessage = null;
     notifyListeners();
-    await _historyRepository.saveConversation(withUserMessage);
+    await _save(withUserMessage);
 
     try {
       final reply = await _chatService.sendMessage(
@@ -152,14 +182,17 @@ class AiChatController extends ChangeNotifier {
         messages: [...withUserMessage.messages, senseiMessage],
       );
       _replaceConversation(completed);
-      await _historyRepository.saveConversation(completed);
-    } catch (_) {
-      _errorMessage = 'Momo could not reach Gemini. Please try again.';
+      await _save(completed);
+    } catch (error) {
+      final detail = error is GeminiException
+          ? error.message
+          : 'Could not reach Gemini. Chat is on this device and does not use '
+              'the Job Sensei API.';
+      _errorMessage = detail;
       final failedAt = DateTime.now();
       final fallback = ChatMessage(
         id: 'message-${failedAt.microsecondsSinceEpoch}-error',
-        text: 'I could not reach Gemini just now. Please check your connection '
-            'or API key, then send the message again.',
+        text: detail,
         author: MessageAuthor.sensei,
         sentAt: failedAt,
       );
@@ -168,10 +201,18 @@ class AiChatController extends ChangeNotifier {
         messages: [...withUserMessage.messages, fallback],
       );
       _replaceConversation(failed);
-      await _historyRepository.saveConversation(failed);
+      await _save(failed);
     } finally {
       _isSending = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _save(ChatConversation conversation) async {
+    try {
+      await _historyRepository.saveConversation(conversation);
+    } catch (_) {
+      _errorMessage ??= 'Reply received, but history could not be saved.';
     }
   }
 

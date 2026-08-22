@@ -11,6 +11,7 @@ import '../features/learning/presentation/screens/skill_gap_screen.dart';
 import '../features/notifications/notifications_page.dart';
 import '../features/profile/profile_page.dart';
 import '../features/resumes/resumes_page.dart';
+import '../core/constants/app_colors.dart';
 import 'injector.dart';
 
 abstract final class AppRouter {
@@ -58,30 +59,23 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
+class _NavItem {
+  const _NavItem(this.label, this.icon, this.activeIcon);
+
+  final String label;
+  final IconData icon;
+  final IconData activeIcon;
+}
+
 class _AppShellState extends State<AppShell> {
   int _index = 0;
 
-  static const _destinations = [
-    NavigationDestination(
-      icon: Icon(Icons.groups_2_outlined),
-      selectedIcon: Icon(Icons.groups_2_rounded),
-      label: 'Community',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.auto_awesome_outlined),
-      selectedIcon: Icon(Icons.auto_awesome_rounded),
-      label: 'AI Sensei',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.donut_large_outlined),
-      selectedIcon: Icon(Icons.donut_large_rounded),
-      label: 'Skill Gap',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.school_outlined),
-      selectedIcon: Icon(Icons.school_rounded),
-      label: 'Learn',
-    ),
+  static const _items = [
+    _NavItem('Community', Icons.groups_2_outlined, Icons.groups_2_rounded),
+    _NavItem('Sensei', Icons.auto_awesome_outlined, Icons.auto_awesome_rounded),
+    _NavItem('Skills', Icons.donut_large_outlined, Icons.donut_large_rounded),
+    _NavItem('Learn', Icons.school_outlined, Icons.school_rounded),
+    _NavItem('Profile', Icons.person_outline_rounded, Icons.person_rounded),
   ];
 
   late final List<Widget> _screens = [
@@ -93,6 +87,7 @@ class _AppShellState extends State<AppShell> {
     ),
     const SkillGapScreen(),
     const LearningResourcesScreen(),
+    const ProfilePage(),
   ];
 
   @override
@@ -112,28 +107,50 @@ class _AppShellState extends State<AppShell> {
 
         if (wide) {
           return Scaffold(
+            backgroundColor: AppColors.background,
             body: Row(
               children: [
-                SafeArea(
-                  child: NavigationRail(
-                    selectedIndex: _index,
-                    onDestinationSelected: (value) =>
-                        setState(() => _index = value),
-                    extended: constraints.maxWidth >= 1100,
-                    leading: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 18),
-                      child: _BrandMark(),
-                    ),
-                    destinations: _destinations
-                        .map((item) => NavigationRailDestination(
-                              icon: item.icon,
-                              selectedIcon: item.selectedIcon,
+                ColoredBox(
+                  color: Colors.white,
+                  child: SafeArea(
+                    child: NavigationRail(
+                      backgroundColor: Colors.white,
+                      selectedIndex: _index,
+                      onDestinationSelected: (value) =>
+                          setState(() => _index = value),
+                      extended: constraints.maxWidth >= 1100,
+                      indicatorColor: const Color(0xFFF3F6FB),
+                      selectedIconTheme:
+                          const IconThemeData(color: AppColors.primary, size: 22),
+                      unselectedIconTheme:
+                          const IconThemeData(color: AppColors.muted, size: 22),
+                      selectedLabelTextStyle: const TextStyle(
+                        color: AppColors.ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                      unselectedLabelTextStyle: const TextStyle(
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                      leading: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 18),
+                        child: _BrandMark(),
+                      ),
+                      destinations: _items
+                          .map(
+                            (item) => NavigationRailDestination(
+                              icon: Icon(item.icon),
+                              selectedIcon: Icon(item.activeIcon),
                               label: Text(item.label),
-                            ))
-                        .toList(),
+                            ),
+                          )
+                          .toList(),
+                    ),
                   ),
                 ),
-                const VerticalDivider(width: 1),
+                const VerticalDivider(width: 1, color: AppColors.border),
                 Expanded(child: content),
               ],
             ),
@@ -141,14 +158,99 @@ class _AppShellState extends State<AppShell> {
         }
 
         return Scaffold(
+          backgroundColor: AppColors.background,
           body: content,
-          bottomNavigationBar: NavigationBar(
+          bottomNavigationBar: _MinimalBottomBar(
+            items: _items,
             selectedIndex: _index,
-            onDestinationSelected: (value) => setState(() => _index = value),
-            destinations: _destinations,
+            onSelect: (value) => setState(() => _index = value),
           ),
         );
       },
+    );
+  }
+}
+
+class _MinimalBottomBar extends StatelessWidget {
+  const _MinimalBottomBar({
+    required this.items,
+    required this.selectedIndex,
+    required this.onSelect,
+  });
+
+  final List<_NavItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: AppColors.border)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 56,
+            child: Row(
+              children: [
+                for (var i = 0; i < items.length; i++)
+                  Expanded(
+                    child: _MinimalNavButton(
+                      item: items[i],
+                      selected: i == selectedIndex,
+                      onTap: () => onSelect(i),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MinimalNavButton extends StatelessWidget {
+  const _MinimalNavButton({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _NavItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppColors.primary : AppColors.muted;
+    return InkWell(
+      onTap: onTap,
+      splashColor: AppColors.primary.withValues(alpha: 0.06),
+      highlightColor: Colors.transparent,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(selected ? item.activeIcon : item.icon, size: 22, color: color),
+          const SizedBox(height: 4),
+          Text(
+            item.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 10.5,
+              height: 1,
+              letterSpacing: 0,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -161,8 +263,10 @@ class _BrandMark extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.psychology_alt_rounded,
-            color: Theme.of(context).colorScheme.primary),
+        Icon(
+          Icons.psychology_alt_rounded,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         const SizedBox(width: 8),
         if (MediaQuery.sizeOf(context).width >= 1100)
           const Text(

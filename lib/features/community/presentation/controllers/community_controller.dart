@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/errors/app_exception.dart';
 import '../../../../shared/models/community_models.dart';
 import '../../domain/repositories/community_repository.dart';
 
@@ -25,6 +26,8 @@ class CommunityController extends ChangeNotifier {
       _groups = snapshot.groups;
       _posts = snapshot.posts;
       _errorMessage = null;
+    } on AppException catch (error) {
+      _errorMessage = error.message;
     } catch (_) {
       _errorMessage = 'Could not load communities. Please try again.';
     } finally {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/injector.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/models/chat_message.dart';
-import '../../data/repositories/in_memory_chat_history_repository.dart';
 import '../../data/services/ai_attachment_picker_service.dart';
 import '../../data/services/gemini_chat_service.dart';
 import '../../domain/repositories/chat_history_repository.dart';
@@ -11,6 +11,8 @@ import '../widgets/ai_buddy.dart';
 import '../widgets/animated_ai_background.dart';
 import '../widgets/chat_composer.dart';
 import '../widgets/chat_history_panel.dart';
+
+enum _AttachSource { gallery, camera, document }
 
 class AiChatScreen extends StatefulWidget {
   const AiChatScreen({
@@ -30,9 +32,9 @@ class AiChatScreen extends StatefulWidget {
 
 class _AiChatScreenState extends State<AiChatScreen> {
   late final AiChatController _chatController = AiChatController(
-    chatService: widget.service ?? GeminiChatService(),
+    chatService: widget.service ?? Injector.chatService(),
     historyRepository:
-        widget.historyRepository ?? InMemoryChatHistoryRepository(),
+        widget.historyRepository ?? Injector.chatHistoryRepository(),
   )..addListener(_refresh);
   late final AiAttachmentPickerService _attachmentPicker =
       widget.attachmentPicker ?? FilePickerAiAttachmentService();
@@ -90,7 +92,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   Future<void> _showAttachmentMenu() async {
     if (_isPickingAttachment || _pendingAttachments.length >= 3) return;
-    final kind = await showModalBottomSheet<ChatAttachmentKind>(
+    final source = await showModalBottomSheet<_AttachSource>(
       context: context,
       showDragHandle: true,
       builder: (context) => SafeArea(
@@ -105,7 +107,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 5),
               const Text(
-                'Momo can review images, PDFs, text, and document metadata.',
+                'Momo can review photos, PDFs, text, and document metadata.',
                 style: TextStyle(color: AppColors.muted),
               ),
               const SizedBox(height: 14),
@@ -113,25 +115,32 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 children: [
                   Expanded(
                     child: _AttachmentOption(
-                      icon: Icons.add_photo_alternate_outlined,
-                      title: 'Photo',
+                      icon: Icons.photo_library_outlined,
+                      title: 'Gallery',
                       subtitle: 'PNG, JPG, WEBP',
                       color: AppColors.primary,
-                      onTap: () =>
-                          Navigator.pop(context, ChatAttachmentKind.image),
+                      onTap: () => Navigator.pop(context, _AttachSource.gallery),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _AttachmentOption(
+                      icon: Icons.photo_camera_outlined,
+                      title: 'Camera',
+                      subtitle: 'Take a photo',
+                      color: AppColors.cyan,
+                      onTap: () => Navigator.pop(context, _AttachSource.camera),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: _AttachmentOption(
                       icon: Icons.description_outlined,
-                      title: 'Document',
+                      title: 'File',
                       subtitle: 'PDF, TXT, DOCX',
                       color: AppColors.violet,
-                      onTap: () => Navigator.pop(
-                        context,
-                        ChatAttachmentKind.document,
-                      ),
+                      onTap: () =>
+                          Navigator.pop(context, _AttachSource.document),
                     ),
                   ),
                 ],
@@ -141,16 +150,18 @@ class _AiChatScreenState extends State<AiChatScreen> {
         ),
       ),
     );
-    if (kind == null || !mounted) return;
-    await _pickAttachments(kind);
+    if (source == null || !mounted) return;
+    await _pickAttachments(source);
   }
 
-  Future<void> _pickAttachments(ChatAttachmentKind kind) async {
+  Future<void> _pickAttachments(_AttachSource source) async {
     setState(() => _isPickingAttachment = true);
     try {
-      final picked = kind == ChatAttachmentKind.image
-          ? await _attachmentPicker.pickImages()
-          : await _attachmentPicker.pickDocuments();
+      final picked = switch (source) {
+        _AttachSource.gallery => await _attachmentPicker.pickImages(),
+        _AttachSource.camera => await _attachmentPicker.pickCamera(),
+        _AttachSource.document => await _attachmentPicker.pickDocuments(),
+      };
       if (!mounted || picked.isEmpty) return;
       final remaining = 3 - _pendingAttachments.length;
       final valid = picked.where((file) => file.sizeBytes <= 8 * 1000 * 1000);
@@ -315,9 +326,11 @@ class _ChatWorkspace extends StatelessWidget {
             _ChatHeader(
               title: conversation?.title ?? 'AI Career Sensei',
               isThinking: controller.isSending,
+              geminiLive: controller.isGeminiConfigured,
               showMenuButton: showMenuButton,
               onOpenHistory: onOpenHistory,
             ),
+            if (!controller.isGeminiConfigured) const _OfflineGeminiBanner(),
             if (controller.isLoading && conversation == null)
               const Expanded(child: Center(child: CircularProgressIndicator()))
             else
@@ -358,12 +371,14 @@ class _ChatHeader extends StatelessWidget {
   const _ChatHeader({
     required this.title,
     required this.isThinking,
+    required this.geminiLive,
     required this.showMenuButton,
     required this.onOpenHistory,
   });
 
   final String title;
   final bool isThinking;
+  final bool geminiLive;
   final bool showMenuButton;
   final VoidCallback onOpenHistory;
 
@@ -399,13 +414,19 @@ class _ChatHeader extends StatelessWidget {
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    const CircleAvatar(
-                        radius: 4, backgroundColor: AppColors.success),
+                    CircleAvatar(
+                      radius: 4,
+                      backgroundColor: geminiLive
+                          ? AppColors.success
+                          : const Color(0xFFD97706),
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       isThinking
                           ? 'Momo is thinking...'
-                          : 'Momo - powered by Gemini',
+                          : geminiLive
+                              ? 'Momo · Gemini on this device'
+                              : 'Momo · offline coach',
                       style:
                           const TextStyle(color: AppColors.muted, fontSize: 11),
                     ),
@@ -415,6 +436,37 @@ class _ChatHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _OfflineGeminiBanner extends StatelessWidget {
+  const _OfflineGeminiBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFFFF6E5),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            const Icon(Icons.key_off_rounded, size: 16, color: Color(0xFFB45309)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Gemini is not configured. Add GEMINI_API_KEY to the .env file '
+                'in the project root, then restart the app.',
+                style: TextStyle(
+                  color: Colors.brown.shade800,
+                  fontSize: 11,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -448,7 +500,9 @@ class _BuddyWelcome extends StatelessWidget {
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
             child: const Text(
-              'Your friendly AI career buddy. Let\'s make resumes sharper, interviews calmer, and your next step clearer.',
+              'Your friendly AI career buddy on this device. Gemini is called '
+              'directly from the app; chats are saved locally and never sent to '
+              'the Job Sensei API.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.muted, height: 1.5),
             ),

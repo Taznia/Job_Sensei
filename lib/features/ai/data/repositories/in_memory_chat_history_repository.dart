@@ -2,7 +2,8 @@ import '../../../../shared/models/chat_message.dart';
 import '../../domain/repositories/chat_history_repository.dart';
 
 class InMemoryChatHistoryRepository implements ChatHistoryRepository {
-  InMemoryChatHistoryRepository() : _conversations = _seedConversations();
+  InMemoryChatHistoryRepository({bool seedDemoChats = false})
+      : _conversations = seedDemoChats ? _seedConversations() : <ChatConversation>[];
 
   List<ChatConversation> _conversations;
 
