@@ -72,32 +72,13 @@ class _NavItem {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
 
-  static const _destinations = [
-    NavigationDestination(
-      icon: Icon(Icons.groups_2_outlined),
-      selectedIcon: Icon(Icons.groups_2_rounded),
-      label: 'Community',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.auto_awesome_outlined),
-      selectedIcon: Icon(Icons.auto_awesome_rounded),
-      label: 'AI Sensei',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.donut_large_outlined),
-      selectedIcon: Icon(Icons.donut_large_rounded),
-      label: 'Skill Gap',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.school_outlined),
-      selectedIcon: Icon(Icons.school_rounded),
-      label: 'Learn',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.person_outline_rounded),
-      selectedIcon: Icon(Icons.person_rounded),
-      label: 'Profile',
-    ),
+  // Order matches _screens below; the shell renders both from the same index.
+  static const _items = <_NavItem>[
+    _NavItem('Community', Icons.groups_2_outlined, Icons.groups_2_rounded),
+    _NavItem('AI Sensei', Icons.auto_awesome_outlined, Icons.auto_awesome_rounded),
+    _NavItem('Skill Gap', Icons.donut_large_outlined, Icons.donut_large_rounded),
+    _NavItem('Learn', Icons.school_outlined, Icons.school_rounded),
+    _NavItem('Profile', Icons.person_outline_rounded, Icons.person_rounded),
   ];
 
   late final List<Widget> _screens = [

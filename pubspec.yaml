@@ -35,7 +35,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env
+    # .env is gitignored, so declaring it here breaks a fresh clone.
+    # Local overrides go through --dart-define=API_BASE_URL=... instead.
     - .env.example
     - assets/animations/
     - assets/fonts/

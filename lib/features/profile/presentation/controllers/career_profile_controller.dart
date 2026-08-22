@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/errors/app_exception.dart';
+
 import '../../../../shared/models/career_profile_models.dart';
 import '../../domain/repositories/career_profile_repository.dart';
 
@@ -18,11 +20,16 @@ class CareerProfileController extends ChangeNotifier {
   bool _isLoading = false;
   bool _isSaving = false;
   String? _errorMessage;
+  bool _requiresSignIn = false;
 
   CareerProfile? get profile => _profile;
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
   String? get errorMessage => _errorMessage;
+
+  /// True when the API rejected the call for want of a valid session, so
+  /// the screen can offer sign-in instead of a pointless retry.
+  bool get requiresSignIn => _requiresSignIn;
   bool get hasProfile => _profile != null;
 
   Future<void> load() async {
@@ -31,8 +38,9 @@ class CareerProfileController extends ChangeNotifier {
     try {
       _profile = await _repository.loadProfile();
       _errorMessage = null;
-    } catch (_) {
-      _errorMessage = 'Could not load your profile. Please try again.';
+      _requiresSignIn = false;
+    } catch (error) {
+      _applyError(error, 'Could not load your profile. Please try again.');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -74,6 +82,20 @@ class CareerProfileController extends ChangeNotifier {
   Future<bool> removePortfolioLink(String id) =>
       _run(() => _repository.removePortfolioLink(id));
 
+  /// Surfaces the API's own message when it has one — "Invalid email or
+  /// password" beats a generic failure — and flags 401s for the sign-in path.
+  void _applyError(Object error, String fallback) {
+    if (error is AppException) {
+      _requiresSignIn = error.statusCode == 401;
+      _errorMessage = _requiresSignIn
+          ? 'Sign in to view and edit your career profile.'
+          : error.message;
+      return;
+    }
+    _requiresSignIn = false;
+    _errorMessage = fallback;
+  }
+
   void clearError() {
     _errorMessage = null;
     notifyListeners();
@@ -87,9 +109,10 @@ class CareerProfileController extends ChangeNotifier {
     try {
       _profile = await operation();
       _errorMessage = null;
+      _requiresSignIn = false;
       return true;
-    } catch (_) {
-      _errorMessage = 'Could not save your changes. Please try again.';
+    } catch (error) {
+      _applyError(error, 'Could not save your changes. Please try again.');
       return false;
     } finally {
       _isSaving = false;

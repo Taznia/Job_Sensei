@@ -299,6 +299,13 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
 
   void _goTo(String route) => Navigator.of(context).pushNamed(route);
 
+  /// Sends the user to sign in, then reloads — the profile is per-account,
+  /// so there is nothing to show until there is a session.
+  Future<void> _goToSignIn() async {
+    await Navigator.of(context).pushNamed(AppRouter.authentication);
+    if (mounted) await _controller.load();
+  }
+
   /* ----------------------------------------------------------- build --- */
 
   @override
@@ -314,6 +321,7 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
           (_, null, final String error) => _ErrorState(
               message: error,
               onRetry: _controller.load,
+              onSignIn: _controller.requiresSignIn ? _goToSignIn : null,
             ),
           _ => const Center(child: CircularProgressIndicator()),
         },
@@ -641,10 +649,17 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+  const _ErrorState({
+    required this.message,
+    required this.onRetry,
+    this.onSignIn,
+  });
 
   final String message;
   final VoidCallback onRetry;
+
+  /// Set only when the failure was a missing or expired session.
+  final VoidCallback? onSignIn;
 
   @override
   Widget build(BuildContext context) {
@@ -667,11 +682,11 @@ class _ErrorState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: onRetry,
+              onPressed: onSignIn ?? onRetry,
               style: FilledButton.styleFrom(
                 backgroundColor: ProfileDesign.primary,
               ),
-              child: const Text('Try again'),
+              child: Text(onSignIn == null ? 'Try again' : 'Sign in'),
             ),
           ],
         ),

@@ -10,6 +10,7 @@ import * as careerProfile from '../controllers/careerProfile.controller.js';
 import * as communities from '../controllers/communities.controller.js';
 import * as files from '../controllers/files.controller.js';
 import * as jobs from '../controllers/jobs.controller.js';
+import * as jobImport from '../controllers/jobImport.controller.js';
 import * as jobSearch from '../controllers/jobSearch.controller.js';
 import * as learning from '../controllers/learning.controller.js';
 import * as notifications from '../controllers/notifications.controller.js';
@@ -59,6 +60,18 @@ api.get('/jobs/saved', requireAuth, jobs.savedJobs);
 // not matched as a job id.
 api.get('/jobs/search', optionalAuth, validate(jobSearch.searchJobsSchema), jobSearch.searchJobs);
 api.get('/jobs/search/filters', jobSearch.getFilterOptions);
+
+// Module 2 job import (22301190). Both sit above /jobs/:id so "import" is not
+// matched as a job id. Triggering writes to the shared collection, so it is
+// limited to admins and recruiters; the status is read-only.
+api.get('/jobs/import/status', jobImport.getImportStatus);
+api.post(
+  '/jobs/import',
+  requireAuth,
+  requireRole('recruiter', 'admin'),
+  validate(jobImport.runImportSchema),
+  jobImport.runImport,
+);
 api.get('/jobs/:id', optionalAuth, jobs.getJob);
 api.post('/jobs/:id/save', requireAuth, jobs.saveJob);
 api.delete('/jobs/:id/save', requireAuth, jobs.unsaveJob);
