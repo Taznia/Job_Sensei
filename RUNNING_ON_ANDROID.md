@@ -48,15 +48,20 @@ MONGODB_URI=mongodb://<the team connection string>
 JWT_SECRET=any-long-random-string
 ```
 
-Seed it once, then start it:
-
-```
-npm run seed
-```
+Start it:
 
 ```
 npm start
 ```
+
+> **Do not run `npm run seed` against a database someone else is already
+> using.** It calls `deleteMany` on jobs, users, posts, resumes and
+> applications first — it is a reset, not a top-up. Seed only when the
+> cluster is empty, or when you are pointing at your own database name.
+>
+> To get your own copy instead of sharing, change the database name near the
+> end of the connection string, e.g. `.../jobsensei_nazifa?...`, and then
+> seeding is safe because it is a different database.
 
 Leave that terminal open. You should see
 `Job Sensei API listening on http://localhost:1190`.
@@ -111,7 +116,49 @@ the first time the server starts.
 
 ---
 
-## 4. Run the app
+## 4. Run it from Android Studio
+
+1. **File → Open**, select the `Job_Sensei` folder (the one containing
+   `pubspec.yaml`). Open the folder, not a single file, or none of the
+   Flutter tooling activates.
+2. Wait for the status bar to finish resolving dependencies. If it does not
+   start on its own, click **Pub get** in the banner across the top.
+3. Plug the phone in and select it in the **device dropdown**, top-right
+   beside the Run button. It appears by model name once adb sees it.
+4. **Run → Edit Configurations…**, select the Flutter configuration, and put
+   this in **Additional run args**:
+
+   ```
+   --dart-define=API_BASE_URL=http://127.0.0.1:1190/api
+   ```
+
+   Apply, then OK. Without it the app cannot reach the backend — the reason
+   is explained below.
+5. Open **View → Tool Windows → Terminal** and start the backend:
+
+   ```
+   cd backend
+   ```
+
+   ```
+   npm start
+   ```
+
+6. Open a **second terminal tab** — the `+` in the Terminal panel, since the
+   first is busy running the server — and map the port across the cable:
+
+   ```
+   adb reverse tcp:1190 tcp:1190
+   ```
+
+7. Press the green **Run ▶** button.
+
+Order matters across steps 3, 6 and 7: `adb reverse` needs the phone already
+connected, and the app needs the mapping already in place before it starts.
+
+---
+
+## 4b. Or run it from the terminal
 
 From the project root, with the phone connected:
 
@@ -125,14 +172,6 @@ For Option B, swap in the laptop's IP:
 flutter run --dart-define=API_BASE_URL=http://192.168.0.14:1190/api
 ```
 
-**In Android Studio** instead of the terminal: Run → Edit Configurations… →
-select the Flutter configuration → put this in **Additional run args**:
-
-```
---dart-define=API_BASE_URL=http://127.0.0.1:1190/api
-```
-
-Then pick the phone in the device dropdown and press Run.
 
 ### Why the `--dart-define` matters
 
