@@ -4,6 +4,8 @@ class AppUser {
     required this.name,
     required this.email,
     this.role = 'seeker',
+    this.organizationName = '',
+    this.employerStatus = 'not_applicable',
     this.headline = '',
     this.bio = '',
     this.location = '',
@@ -16,6 +18,8 @@ class AppUser {
   final String name;
   final String email;
   final String role;
+  final String organizationName;
+  final String employerStatus;
   final String headline;
   final String bio;
   final String location;
@@ -29,6 +33,8 @@ class AppUser {
       name: json['name'] as String? ?? '',
       email: json['email'] as String? ?? '',
       role: json['role'] as String? ?? 'seeker',
+      organizationName: json['organizationName'] as String? ?? '',
+      employerStatus: json['employerStatus'] as String? ?? 'not_applicable',
       headline: json['headline'] as String? ?? '',
       bio: json['bio'] as String? ?? '',
       location: json['location'] as String? ?? '',

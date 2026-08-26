@@ -65,11 +65,31 @@ class CommunityController extends ChangeNotifier {
     });
   }
 
+  Future<void> removeMember({
+    required String communityId,
+    required String userId,
+  }) async {
+    await _run(() async {
+      final updated = await _repository.removeMember(
+        communityId: communityId,
+        userId: userId,
+      );
+      _replaceGroup(updated);
+    });
+  }
+
   Future<CommunityPost?> createPost(CreatePostRequest request) async {
     return _run(() async {
       final created = await _repository.createPost(request);
       _posts = [created, ..._posts];
       return created;
+    });
+  }
+
+  Future<void> deletePost(String postId) async {
+    await _run(() async {
+      await _repository.deletePost(postId);
+      _posts = _posts.where((post) => post.id != postId).toList();
     });
   }
 
@@ -85,12 +105,24 @@ class CommunityController extends ChangeNotifier {
     });
   }
 
-  Future<CommunityPost?> addComment(String postId, String body) {
+  Future<CommunityPost?> addComment(
+    String postId,
+    String body, {
+    String? parentCommentId,
+  }) {
     return _run(() async {
-      final updated = await _repository.addComment(postId: postId, body: body);
+      final updated = await _repository.addComment(
+        postId: postId,
+        body: body,
+        parentCommentId: parentCommentId,
+      );
       _replacePost(updated);
       return updated;
     });
+  }
+
+  Future<void> reportPost(String postId, String reason) async {
+    await _run(() => _repository.reportPost(postId: postId, reason: reason));
   }
 
   void clearError() {

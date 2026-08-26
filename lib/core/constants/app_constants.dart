@@ -6,6 +6,11 @@ class AppConstants {
   static const String appName = 'Job Sensei';
   static const String appVersion = '0.1.0';
   static const String accessTokenKey = 'access_token';
+  static const String sessionActiveKey = 'session_active';
+  static const String cachedUserIdKey = 'cached_user_id';
+  static const String cachedUserNameKey = 'cached_user_name';
+  static const String cachedUserEmailKey = 'cached_user_email';
+  static const String cachedUserRoleKey = 'cached_user_role';
 
   /// Android emulator cannot use `localhost` — that is the emulator itself.
   /// `10.0.2.2` is the host machine where the Node API runs.

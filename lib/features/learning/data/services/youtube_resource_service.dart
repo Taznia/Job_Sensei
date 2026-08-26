@@ -18,7 +18,8 @@ class YouTubeResourceService implements ResourceService {
 
   @override
   Future<List<LearningResource>> recommendations(List<String> skills) async {
-    if (_apiKey.isEmpty || skills.isEmpty) return demoResources;
+    if (skills.isEmpty) return const [];
+    if (_apiKey.isEmpty) return demoForSkills(skills);
     final results = <LearningResource>[];
 
     for (final skill in skills.take(3)) {
@@ -54,6 +55,26 @@ class YouTubeResourceService implements ResourceService {
       }
     }
     return results.isEmpty ? demoResources : results;
+  }
+
+  /// Local demo paths keep the Module 3 -> Module 4 hand-off usable without
+  /// a configured YouTube API key. Production uses YouTube search above.
+  static List<LearningResource> demoForSkills(List<String> skills) {
+    return skills
+        .map(
+          (skill) => LearningResource(
+            title: '$skill learning path',
+            creator: 'Job Sensei Learning',
+            skill: skill,
+            duration: 'Self-paced',
+            difficulty: 'Recommended',
+            color: AppColorsForResources.forSkill(skill),
+            icon: Icons.school_rounded,
+            url:
+                'https://www.youtube.com/results?search_query=${Uri.encodeComponent('$skill tutorial')}',
+          ),
+        )
+        .toList();
   }
 
   static const demoResources = <LearningResource>[

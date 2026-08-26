@@ -2,10 +2,12 @@ import '../features/ai/data/repositories/in_memory_chat_history_repository.dart'
 import '../features/ai/data/repositories/sqlite_chat_history_repository.dart';
 import '../features/ai/data/services/ai_attachment_picker_service.dart';
 import '../features/ai/data/services/gemini_chat_service.dart';
+import '../features/ai/data/services/privacy_safe_chat_service.dart';
 import '../features/ai/domain/repositories/chat_history_repository.dart';
 import '../features/community/data/repositories/api_community_repository.dart';
 import '../features/community/domain/repositories/community_repository.dart';
 import '../features/learning/data/services/youtube_resource_service.dart';
+import '../features/learning/data/repositories/learning_progress_repository.dart';
 import '../services/auth_service.dart';
 import '../features/profile/data/repositories/in_memory_career_profile_repository.dart';
 import '../features/profile/domain/repositories/career_profile_repository.dart';
@@ -23,7 +25,7 @@ abstract final class Injector {
   }
 
   static AuthService authService() => _auth;
-  static ChatService chatService() => GeminiChatService();
+  static ChatService chatService() => PrivacySafeChatService();
   static ChatHistoryRepository chatHistoryRepository() {
     return _chatHistory ??= _memoryChatFallback
         ? InMemoryChatHistoryRepository()
@@ -34,6 +36,10 @@ abstract final class Injector {
       FilePickerAiAttachmentService();
   static CommunityRepository communityRepository() => ApiCommunityRepository();
   static ResourceService resourceService() => YouTubeResourceService();
+  static final LearningProgressRepository _learningProgress =
+      ApiLearningProgressRepository();
+  static LearningProgressRepository learningProgressRepository() =>
+      _learningProgress;
 
   /// Single seeded profile for now. A REST implementation drops in here without
   /// the profile screens changing.

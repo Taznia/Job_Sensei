@@ -7,9 +7,14 @@ import '../../../../shared/models/learning_models.dart';
 import '../../data/services/youtube_resource_service.dart';
 
 class LearningResourcesScreen extends StatefulWidget {
-  const LearningResourcesScreen({super.key, this.service});
+  const LearningResourcesScreen({
+    super.key,
+    this.service,
+    this.initialSkills,
+  });
 
   final ResourceService? service;
+  final List<String>? initialSkills;
 
   @override
   State<LearningResourcesScreen> createState() =>
@@ -23,21 +28,23 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
   String _filter = 'All';
   final _bookmarked = <String>{};
 
-  static const _missingSkills = [
+  static const _defaultSkills = [
     'TypeScript',
     'GraphQL',
     'Docker',
     'System Design'
   ];
 
+  List<String> get _skills => widget.initialSkills ?? _defaultSkills;
+
   @override
   void initState() {
     super.initState();
-    _future = _service.recommendations(_missingSkills);
+    _future = _service.recommendations(_skills);
   }
 
   void _refresh() {
-    setState(() => _future = _service.recommendations(_missingSkills));
+    setState(() => _future = _service.recommendations(_skills));
   }
 
   @override
@@ -67,14 +74,14 @@ class _LearningResourcesScreenState extends State<LearningResourcesScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const _PathSummary(skills: _missingSkills),
+                  _PathSummary(skills: _skills),
                   const SizedBox(height: 22),
                   const SectionTitle('Recommended for you'),
                   const SizedBox(height: 12),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: ['All', ..._missingSkills]
+                      children: ['All', ..._skills]
                           .map((skill) => Padding(
                                 padding: const EdgeInsets.only(right: 8),
                                 child: ChoiceChip(

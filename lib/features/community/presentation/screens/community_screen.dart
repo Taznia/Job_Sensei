@@ -599,14 +599,6 @@ class _GroupCard extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            if (group.privacy == CommunityPrivacy.private) ...[
-                              const Icon(
-                                Icons.lock_outline_rounded,
-                                size: 15,
-                                color: AppColors.muted,
-                              ),
-                              const SizedBox(width: 4),
-                            ],
                             Flexible(
                               child: Text(
                                 '${CommunityVisuals.memberCount(group.memberCount)} members',
@@ -729,6 +721,51 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
     }
   }
 
+  Future<void> _manageMembers() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => _MemberManagementSheet(
+        group: _group,
+        onRemove: _removeMember,
+      ),
+    );
+  }
+
+  Future<void> _removeMember(CommunityMember member) async {
+    Navigator.of(context).pop();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Remove ${member.name}?'),
+        content: const Text(
+          'They will need to join again before posting in this community.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Remove member'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await widget.controller.removeMember(
+      communityId: widget.communityId,
+      userId: member.id,
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${member.name} was removed.')),
+      );
+    }
+  }
+
   Future<void> _leaveCommunity() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -762,7 +799,13 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
       appBar: AppBar(
         title: Text(group.name),
         actions: [
-          if (group.isJoined)
+          if (group.isOwner)
+            IconButton(
+              tooltip: 'Manage members',
+              onPressed: _manageMembers,
+              icon: const Icon(Icons.manage_accounts_outlined),
+            )
+          else if (group.isJoined)
             PopupMenuButton<String>(
               onSelected: (value) {
                 if (value == 'leave') _leaveCommunity();
@@ -829,10 +872,8 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                     ),
                     const Spacer(),
                     _HeroStat(
-                      icon: group.privacy == CommunityPrivacy.public
-                          ? Icons.public_rounded
-                          : Icons.lock_outline_rounded,
-                      label: group.privacy.name,
+                      icon: Icons.public_rounded,
+                      label: 'public',
                     ),
                   ],
                 ),
@@ -859,7 +900,9 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                       style: const TextStyle(color: Colors.white),
                     ),
                     const Spacer(),
-                    if (group.isJoined)
+                    if (group.isOwner)
+                      const AppBadge(label: 'CREATOR', color: Colors.white)
+                    else if (group.isJoined)
                       const AppBadge(label: 'MEMBER', color: Colors.white)
                     else
                       FilledButton.tonal(
@@ -890,9 +933,87 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
             ..._posts.map((post) => Padding(
                   padding: const EdgeInsets.only(bottom: 13),
                   child: CommunityPostCard(
-                      post: post, controller: widget.controller),
+                    post: post,
+                    controller: widget.controller,
+                    onDelete: group.isOwner
+                        ? () => widget.controller.deletePost(post.id)
+                        : null,
+                  ),
                 )),
         ],
+      ),
+    );
+  }
+}
+
+class _MemberManagementSheet extends StatelessWidget {
+  const _MemberManagementSheet({
+    required this.group,
+    required this.onRemove,
+  });
+
+  final CommunityGroup group;
+  final ValueChanged<CommunityMember> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Manage members',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 5),
+            Text(
+              'You created this community and can remove members.',
+              style: const TextStyle(color: AppColors.muted),
+            ),
+            const SizedBox(height: 14),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: group.members.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final member = group.members[index];
+                  final isCreator = member.id == group.createdById;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      child: Text(
+                        member.name.isEmpty
+                            ? '?'
+                            : member.name[0].toUpperCase(),
+                      ),
+                    ),
+                    title: Text(member.name),
+                    subtitle: Text(
+                      isCreator ? 'Creator' : member.email,
+                    ),
+                    trailing: isCreator
+                        ? const AppBadge(
+                            label: 'OWNER',
+                            color: AppColors.primary,
+                          )
+                        : TextButton.icon(
+                            onPressed: () => onRemove(member),
+                            icon: const Icon(Icons.person_remove_outlined),
+                            label: const Text('Remove'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.danger,
+                            ),
+                          ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -903,10 +1024,38 @@ class CommunityPostCard extends StatelessWidget {
     super.key,
     required this.post,
     required this.controller,
+    this.onDelete,
   });
 
   final CommunityPost post;
   final CommunityController controller;
+  final Future<void> Function()? onDelete;
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove this post?'),
+        content: const Text(
+          'This post will be permanently removed from your community.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Remove post'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await onDelete?.call();
+    if (context.mounted) _showMessage(context, 'Post removed.');
+  }
 
   Future<void> _showComments(BuildContext context) async {
     await showModalBottomSheet<void>(
@@ -915,7 +1064,11 @@ class CommunityPostCard extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => _CommentsSheet(
         post: post,
-        onSubmit: (body) => controller.addComment(post.id, body),
+        onSubmit: (body, parentCommentId) => controller.addComment(
+          post.id,
+          body,
+          parentCommentId: parentCommentId,
+        ),
       ),
     );
   }
@@ -952,6 +1105,43 @@ class CommunityPostCard extends StatelessWidget {
       if (context.mounted) {
         _showMessage(context, 'Could not open that sharing app.');
       }
+    }
+  }
+
+  Future<void> _reportPost(BuildContext context) async {
+    final reasonController = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Report post'),
+        content: TextField(
+          controller: reasonController,
+          minLines: 2,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            hintText: 'Tell the Admin what is wrong with this post',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(
+              dialogContext,
+              reasonController.text.trim(),
+            ),
+            child: const Text('Submit report'),
+          ),
+        ],
+      ),
+    );
+    reasonController.dispose();
+    if (reason == null || reason.length < 5) return;
+    await controller.reportPost(post.id, reason);
+    if (context.mounted) {
+      _showMessage(context, 'Report sent to the Admin moderation queue.');
     }
   }
 
@@ -1016,6 +1206,15 @@ class CommunityPostCard extends StatelessWidget {
                         post.isFollowed ? AppColors.primary : AppColors.muted,
                   ),
                 ),
+                if (onDelete != null)
+                  IconButton(
+                    tooltip: 'Remove post',
+                    onPressed: () => _confirmDelete(context),
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.danger,
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 14),
@@ -1061,6 +1260,11 @@ class CommunityPostCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
+                IconButton(
+                  tooltip: 'Report post',
+                  onPressed: () => _reportPost(context),
+                  icon: const Icon(Icons.flag_outlined, size: 19),
+                ),
                 Tooltip(
                   message: 'Share post',
                   child: TextButton.icon(
@@ -1082,7 +1286,10 @@ class _CommentsSheet extends StatefulWidget {
   const _CommentsSheet({required this.post, required this.onSubmit});
 
   final CommunityPost post;
-  final Future<CommunityPost?> Function(String body) onSubmit;
+  final Future<CommunityPost?> Function(
+    String body,
+    String? parentCommentId,
+  ) onSubmit;
 
   @override
   State<_CommentsSheet> createState() => _CommentsSheetState();
@@ -1092,6 +1299,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
   final _textController = TextEditingController();
   late CommunityPost _post = widget.post;
   bool _isSubmitting = false;
+  CommunityComment? _replyingTo;
 
   @override
   void dispose() {
@@ -1103,7 +1311,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     final value = _textController.text.trim();
     if (value.isEmpty || _isSubmitting) return;
     setState(() => _isSubmitting = true);
-    final updated = await widget.onSubmit(value);
+    final updated = await widget.onSubmit(value, _replyingTo?.id);
     if (!mounted) return;
     setState(() {
       _isSubmitting = false;
@@ -1191,11 +1399,39 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                         padding: const EdgeInsets.all(18),
                         itemCount: _post.comments.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 14),
-                        itemBuilder: (_, index) =>
-                            _CommentTile(comment: _post.comments[index]),
+                        itemBuilder: (_, index) {
+                          final comment = _post.comments[index];
+                          return _CommentTile(
+                            comment: comment,
+                            onReply: () =>
+                                setState(() => _replyingTo = comment),
+                          );
+                        },
                       ),
               ),
               const Divider(height: 1),
+              if (_replyingTo != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Replying to ${_replyingTo!.author}',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Cancel reply',
+                        onPressed: () => setState(() => _replyingTo = null),
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                      ),
+                    ],
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                 child: Row(
@@ -1239,9 +1475,10 @@ class _CommentsSheetState extends State<_CommentsSheet> {
 }
 
 class _CommentTile extends StatelessWidget {
-  const _CommentTile({required this.comment});
+  const _CommentTile({required this.comment, required this.onReply});
 
   final CommunityComment comment;
+  final VoidCallback onReply;
 
   @override
   Widget build(BuildContext context) {
@@ -1287,8 +1524,24 @@ class _CommentTile extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (comment.parentCommentId != null)
+                  const Text(
+                    'Reply',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 const SizedBox(height: 5),
                 Text(comment.body, style: const TextStyle(height: 1.4)),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: onReply,
+                    child: const Text('Reply'),
+                  ),
+                ),
               ],
             ),
           ),

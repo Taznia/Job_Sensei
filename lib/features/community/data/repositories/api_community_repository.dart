@@ -29,7 +29,6 @@ class ApiCommunityRepository implements CommunityRepository {
       'name': request.name,
       'description': request.description,
       'category': request.category,
-      'privacy': request.privacy.name,
       'visualKey': request.visualKey,
     }) as Map<String, dynamic>;
     return CommunityGroup.fromJson(data);
@@ -44,6 +43,17 @@ class ApiCommunityRepository implements CommunityRepository {
         ? await _client.post('/communities/$communityId/join')
         : await _client.delete('/communities/$communityId/leave');
     return CommunityGroup.fromJson(data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<CommunityGroup> removeMember({
+    required String communityId,
+    required String userId,
+  }) async {
+    final data = await _client.delete(
+      '/communities/$communityId/members/$userId',
+    ) as Map<String, dynamic>;
+    return CommunityGroup.fromJson(data);
   }
 
   @override
@@ -71,8 +81,14 @@ class ApiCommunityRepository implements CommunityRepository {
       if (files.isNotEmpty) 'files': files,
     });
 
-    final data = await _client.post('/posts', data: form) as Map<String, dynamic>;
+    final data =
+        await _client.post('/posts', data: form) as Map<String, dynamic>;
     return CommunityPost.fromJson(data);
+  }
+
+  @override
+  Future<void> deletePost(String postId) async {
+    await _client.delete('/posts/$postId');
   }
 
   @override
@@ -93,10 +109,20 @@ class ApiCommunityRepository implements CommunityRepository {
   Future<CommunityPost> addComment({
     required String postId,
     required String body,
+    String? parentCommentId,
   }) async {
     final data = await _client.post('/posts/$postId/comments', data: {
       'body': body,
+      if (parentCommentId != null) 'parentCommentId': parentCommentId,
     }) as Map<String, dynamic>;
     return CommunityPost.fromJson(data);
+  }
+
+  @override
+  Future<void> reportPost({
+    required String postId,
+    required String reason,
+  }) {
+    return _client.post('/posts/$postId/report', data: {'reason': reason});
   }
 }

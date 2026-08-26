@@ -27,6 +27,10 @@ class JobService {
     return await _client.get('/jobs/$id') as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> selectedJobSkillGap(String id) async {
+    return await _client.post('/jobs/$id/skill-gap') as Map<String, dynamic>;
+  }
+
   Future<void> save(String id) => _client.post('/jobs/$id/save');
 
   Future<void> unsave(String id) => _client.delete('/jobs/$id/save');
