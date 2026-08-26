@@ -20,11 +20,22 @@ class JobDetailsPage extends StatefulWidget {
 class _JobDetailsPageState extends State<JobDetailsPage> {
   late final JobRepository _repository =
       widget.repository ?? ApiJobRepository();
-  late final Future<JobSkillGapAnalysis> _analysis =
-      _repository.skillGap(widget.job);
+  late final Future<JobSkillGapAnalysis> _analysis = _loadAnalysis();
   bool get _isSeeker =>
       Injector.authService().currentUser?.role == 'seeker' ||
       Injector.authService().currentUser == null;
+
+  Future<JobSkillGapAnalysis> _loadAnalysis() async {
+    try {
+      return await _repository.skillGap(widget.job);
+    } catch (_) {
+      return JobSkillGapAnalysis(
+        job: widget.job,
+        strongSkills: const [],
+        missingSkills: widget.job.requiredSkills,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,23 +44,25 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
         children: [
-          Text(widget.job.title,
-              style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 5),
-          Text(widget.job.company,
-              style: const TextStyle(
-                  color: AppColors.primary, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 14),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            AppBadge(
-                label: widget.job.location, icon: Icons.location_on_outlined),
-            AppBadge(label: widget.job.type, icon: Icons.work_outline_rounded),
-            AppBadge(
-                label: widget.job.workMode, icon: Icons.wifi_tethering_rounded)
-          ]),
-          const SizedBox(height: 22),
-          Text(widget.job.description,
-              style: const TextStyle(color: AppColors.muted, height: 1.45)),
+          GradientHero(
+            eyebrow: widget.job.company,
+            title: widget.job.title,
+            description: widget.job.description,
+            stats: [
+              HeroStatChip(
+                icon: Icons.location_on_outlined,
+                label: widget.job.location,
+              ),
+              HeroStatChip(
+                icon: Icons.wifi_tethering_rounded,
+                label: widget.job.workMode,
+              ),
+              HeroStatChip(
+                icon: Icons.schedule_rounded,
+                label: widget.job.type,
+              ),
+            ],
+          ),
           if (_isSeeker) ...[
             const SizedBox(height: 26),
             const SectionTitle('Job Match'),

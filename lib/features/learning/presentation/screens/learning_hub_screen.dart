@@ -144,7 +144,9 @@ class _LearningHubScreenState extends State<LearningHubScreen> {
     final jobMode = _selectedJob != null;
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FC),
+      appBar: const TabAppBar(title: 'Learn'),
       body: SafeArea(
+        top: false,
         child: jobMode
             ? (_jobLoading || _jobAnalysis == null
                 ? const Center(child: CircularProgressIndicator())

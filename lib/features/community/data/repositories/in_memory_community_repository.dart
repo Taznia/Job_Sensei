@@ -234,6 +234,7 @@ class InMemoryCommunityRepository implements CommunityRepository {
         kind: pending.kind,
         sizeBytes: pending.sizeBytes,
         localPath: pending.localPath,
+        bytes: pending.bytes,
       );
     }).toList();
     final post = CommunityPost(

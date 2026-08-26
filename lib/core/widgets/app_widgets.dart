@@ -53,6 +53,185 @@ class ScreenIntro extends StatelessWidget {
   }
 }
 
+class TabAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const TabAppBar({super.key, required this.title});
+
+  final String title;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 1);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      foregroundColor: AppColors.ink,
+      elevation: 0,
+      surfaceTintColor: Colors.transparent,
+      titleSpacing: 18,
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w800),
+      ),
+      bottom: const PreferredSize(
+        preferredSize: Size.fromHeight(1),
+        child: Divider(height: 1, color: AppColors.border),
+      ),
+    );
+  }
+}
+
+class GradientHero extends StatelessWidget {
+  const GradientHero({
+    super.key,
+    required this.eyebrow,
+    required this.title,
+    required this.description,
+    this.trailing,
+    this.stats = const [],
+    this.footer,
+  });
+
+  final String eyebrow;
+  final String title;
+  final String description;
+  final Widget? trailing;
+  final List<Widget> stats;
+  final Widget? footer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0B57D0), AppColors.primary, AppColors.cyan],
+          stops: [0, 0.58, 1],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.24),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -36,
+            top: -50,
+            child: CircleAvatar(
+              radius: 72,
+              backgroundColor: Colors.white.withValues(alpha: 0.08),
+            ),
+          ),
+          Positioned(
+            right: 28,
+            bottom: -28,
+            child: CircleAvatar(
+              radius: 36,
+              backgroundColor: Colors.white.withValues(alpha: 0.06),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          eyebrow.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.7,
+                            height: 1.15,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          description,
+                          maxLines: 4,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (trailing != null) ...[
+                    const SizedBox(width: 12),
+                    trailing!,
+                  ],
+                ],
+              ),
+              if (stats.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                Wrap(spacing: 8, runSpacing: 8, children: stats),
+              ],
+              if (footer != null) ...[
+                const SizedBox(height: 16),
+                footer!,
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class HeroStatChip extends StatelessWidget {
+  const HeroStatChip({super.key, required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 15),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class SectionTitle extends StatelessWidget {
   const SectionTitle(this.title, {super.key, this.action, this.onAction});
 

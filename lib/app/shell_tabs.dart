@@ -5,8 +5,14 @@ import 'package:flutter/foundation.dart';
 abstract final class ShellTabs {
   static final ValueNotifier<String?> request = ValueNotifier<String?>(null);
 
-  static void openLearn() {
+  static void openJobs() => _set('jobs');
+
+  static void openLearn() => _set('learn');
+
+  static void openProfile() => _set('profile');
+
+  static void _set(String tab) {
     request.value = null;
-    request.value = 'learn';
+    request.value = tab;
   }
 }

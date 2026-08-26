@@ -107,6 +107,7 @@ class CommunityAttachment {
     required this.sizeBytes,
     this.url,
     this.localPath,
+    this.bytes,
   });
 
   factory CommunityAttachment.fromJson(Map<String, dynamic> json) {
@@ -128,6 +129,9 @@ class CommunityAttachment {
   final int sizeBytes;
   final String? url;
   final String? localPath;
+  final Uint8List? bytes;
+
+  bool get isImage => kind == AttachmentKind.image;
 }
 
 /// A local attachment waiting to be uploaded by a repository implementation.

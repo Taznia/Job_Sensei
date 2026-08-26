@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../features/admin/admin_page.dart';
 import '../features/ai/presentation/screens/ai_chat_screen.dart';
+import '../features/ai/presentation/widgets/momo_fab.dart';
 import '../features/applications/applications_page.dart';
 import '../features/authentication/authentication_page.dart';
 import '../features/authentication/role_account_page.dart';
@@ -290,8 +291,13 @@ class _AppShellState extends State<AppShell> {
 
   void _onTabRequest() {
     final request = ShellTabs.request.value;
-    if (request != 'learn') return;
-    final index = _screens.indexWhere((screen) => screen is LearningHubScreen);
+    final index = switch (request) {
+      'jobs' => _screens.indexWhere((screen) => screen is JobsPage),
+      'learn' => _screens.indexWhere((screen) => screen is LearningHubScreen),
+      'profile' =>
+        _screens.indexWhere((screen) => screen is CareerProfileScreen),
+      _ => -1,
+    };
     if (index < 0 || index == _index) return;
     setState(() => _index = index);
   }
@@ -310,7 +316,7 @@ class _AppShellState extends State<AppShell> {
         final isSeeker = Injector.authService().currentUser?.role == null ||
             Injector.authService().currentUser?.role == 'seeker';
         final aiFab = isSeeker
-            ? FloatingActionButton.extended(
+            ? MomoFab(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => AiChatScreen(
@@ -320,8 +326,6 @@ class _AppShellState extends State<AppShell> {
                     ),
                   ),
                 ),
-                icon: const Icon(Icons.auto_awesome_rounded),
-                label: const Text('AI Sensei'),
               )
             : null;
         final content = IndexedStack(

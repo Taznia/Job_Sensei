@@ -9,6 +9,7 @@ import '../../data/repositories/in_memory_community_repository.dart';
 import '../../domain/repositories/community_repository.dart';
 import '../controllers/community_controller.dart';
 import '../widgets/community_visuals.dart';
+import '../widgets/post_attachment_tile.dart';
 import 'create_community_screen.dart';
 import 'create_post_screen.dart';
 
@@ -1193,19 +1194,6 @@ class CommunityPostCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                IconButton(
-                  tooltip: post.isFollowed
-                      ? 'Unfollow discussion'
-                      : 'Follow discussion',
-                  onPressed: () => controller.toggleFollow(post.id),
-                  icon: Icon(
-                    post.isFollowed
-                        ? Icons.bookmark_rounded
-                        : Icons.bookmark_border_rounded,
-                    color:
-                        post.isFollowed ? AppColors.primary : AppColors.muted,
-                  ),
-                ),
                 if (onDelete != null)
                   IconButton(
                     tooltip: 'Remove post',
@@ -1223,7 +1211,7 @@ class CommunityPostCard extends StatelessWidget {
               const SizedBox(height: 13),
               ...post.attachments.map((attachment) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: _PostAttachment(attachment: attachment),
+                    child: PostAttachmentTile(attachment: attachment),
                   )),
             ],
             const Divider(height: 26),
@@ -1608,63 +1596,6 @@ class _PostShareSheet extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PostAttachment extends StatelessWidget {
-  const _PostAttachment({required this.attachment});
-
-  final CommunityAttachment attachment;
-
-  @override
-  Widget build(BuildContext context) {
-    final isImage = attachment.kind == AttachmentKind.image;
-    final color = isImage ? AppColors.primary : AppColors.violet;
-    return Container(
-      padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.15)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Icon(
-              isImage ? Icons.image_outlined : Icons.description_outlined,
-              color: color,
-              size: 21,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  attachment.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 12),
-                ),
-                Text(
-                  CommunityVisuals.fileSize(attachment.sizeBytes),
-                  style: const TextStyle(color: AppColors.muted, fontSize: 10),
-                ),
-              ],
-            ),
-          ),
-          Icon(Icons.open_in_new_rounded, size: 17, color: color),
-        ],
       ),
     );
   }
