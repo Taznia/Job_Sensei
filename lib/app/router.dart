@@ -15,6 +15,7 @@ import '../features/profile/presentation/screens/career_profile_screen.dart';
 import '../features/resumes/resumes_page.dart';
 import '../core/constants/app_colors.dart';
 import 'injector.dart';
+import 'shell_tabs.dart';
 
 abstract final class AppRouter {
   static const home = '/';
@@ -68,10 +69,7 @@ abstract final class AppRouter {
                 : const LearningHubScreen(),
           );
         },
-      skillGap => (_) => const _RoleGuard(
-            allowedRoles: {'seeker'},
-            child: LearningHubScreen(),
-          ),
+      skillGap => (_) => const _OpenLearnTab(),
       community => (_) => const CommunityScreen(),
       notifications => (_) => const NotificationsPage(),
       admin => (_) => const _RoleGuard(
@@ -82,6 +80,34 @@ abstract final class AppRouter {
       _ => (_) => const AppShell(),
     };
     return MaterialPageRoute<void>(settings: settings, builder: builder);
+  }
+}
+
+class _OpenLearnTab extends StatefulWidget {
+  const _OpenLearnTab();
+
+  @override
+  State<_OpenLearnTab> createState() => _OpenLearnTabState();
+}
+
+class _OpenLearnTabState extends State<_OpenLearnTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ShellTabs.openLearn();
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
+    );
   }
 }
 
@@ -174,6 +200,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
+    ShellTabs.request.addListener(_onTabRequest);
     final role = Injector.authService().currentUser?.role ?? 'seeker';
     switch (role) {
       case 'recruiter':
@@ -259,6 +286,20 @@ class _AppShellState extends State<AppShell> {
         ];
         break;
     }
+  }
+
+  void _onTabRequest() {
+    final request = ShellTabs.request.value;
+    if (request != 'learn') return;
+    final index = _screens.indexWhere((screen) => screen is LearningHubScreen);
+    if (index < 0 || index == _index) return;
+    setState(() => _index = index);
+  }
+
+  @override
+  void dispose() {
+    ShellTabs.request.removeListener(_onTabRequest);
+    super.dispose();
   }
 
   @override
@@ -450,20 +491,15 @@ class _BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          Icons.psychology_alt_rounded,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        const SizedBox(width: 8),
-        if (MediaQuery.sizeOf(context).width >= 1100)
-          const Text(
-            'Job Sensei',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-          ),
-      ],
+    final extended = MediaQuery.sizeOf(context).width >= 1100;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Image.asset(
+        'assets/logos/logo.png',
+        height: extended ? 28 : 22,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+      ),
     );
   }
 }

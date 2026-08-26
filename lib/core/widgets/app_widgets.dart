@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
+import '../constants/app_constants.dart';
+
+const String kAppLogoAsset = 'assets/logos/logo.png';
 
 class ScreenIntro extends StatelessWidget {
   const ScreenIntro({
@@ -157,6 +160,37 @@ class EmptyState extends StatelessWidget {
             style: const TextStyle(color: AppColors.muted),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class AppLogo extends StatelessWidget {
+  const AppLogo({
+    super.key,
+    this.height = 32,
+    this.alignment = Alignment.centerLeft,
+  });
+
+  final double height;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      kAppLogoAsset,
+      height: height,
+      fit: BoxFit.contain,
+      alignment: alignment,
+      filterQuality: FilterQuality.high,
+      errorBuilder: (_, __, ___) => Text(
+        AppConstants.appName,
+        style: TextStyle(
+          fontSize: height * 0.52,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.3,
+          color: AppColors.ink,
+        ),
       ),
     );
   }

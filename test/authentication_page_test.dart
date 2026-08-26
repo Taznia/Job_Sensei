@@ -26,17 +26,18 @@ void main() {
       (tester) async {
     await pumpAuth(tester, register: true);
 
+    expect(find.text('Create Account'), findsOneWidget);
     expect(find.text('Job seeker'), findsOneWidget);
     expect(find.text('Employer'), findsOneWidget);
-    expect(find.text('Organization name'), findsNothing);
-    expect(find.text('Create job seeker account'), findsOneWidget);
+    expect(find.text('ORGANIZATION'), findsNothing);
+    expect(find.text('SIGN UP'), findsOneWidget);
 
     await tester.tap(find.text('Employer'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Organization name'), findsOneWidget);
-    expect(find.text('Work email address'), findsOneWidget);
-    expect(find.text('Submit employer account'), findsOneWidget);
+    expect(find.text('ORGANIZATION'), findsOneWidget);
+    expect(find.text('WORK EMAIL'), findsOneWidget);
+    expect(find.text('SIGN UP'), findsOneWidget);
     expect(
       find.textContaining('Admin verification is required'),
       findsOneWidget,
@@ -47,12 +48,18 @@ void main() {
       (tester) async {
     await pumpAuth(tester);
 
-    expect(find.text('Forgot password?'), findsOneWidget);
-    expect(find.text('Organization name'), findsNothing);
-    expect(find.text('Confirm password'), findsNothing);
+    expect(find.text('Login'), findsOneWidget);
+    expect(find.text('Please sign in to continue.'), findsOneWidget);
+    expect(find.text('FORGOT'), findsOneWidget);
+    expect(find.text('ORGANIZATION'), findsNothing);
+    expect(find.text('CONFIRM PASSWORD'), findsNothing);
+    expect(find.text('TEST ACCOUNTS'), findsOneWidget);
+    expect(find.textContaining('demo@jobsensei.app'), findsOneWidget);
+    expect(find.textContaining('recruiter@jobsensei.app'), findsOneWidget);
+    expect(find.textContaining('admin@jobsensei.app'), findsOneWidget);
 
-    final forgotPassword = find.widgetWithText(TextButton, 'Forgot password?');
-    await tester.drag(find.byType(ListView), const Offset(0, -420));
+    final forgotPassword = find.widgetWithText(TextButton, 'FORGOT');
+    await tester.ensureVisible(forgotPassword);
     await tester.pumpAndSettle();
     await tester.tap(forgotPassword);
     await tester.pumpAndSettle();
@@ -70,7 +77,7 @@ void main() {
     await tester.enterText(fields.at(2), 'Password123!');
     await tester.enterText(fields.at(3), 'Different123!');
 
-    final submit = find.text('Create job seeker account');
+    final submit = find.text('SIGN UP');
     await tester.ensureVisible(submit);
     await tester.pumpAndSettle();
     await tester.tap(submit);

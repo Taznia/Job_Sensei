@@ -136,8 +136,7 @@ const demoLearningPaths = <StructuredLearningPath>[
           LessonResource(
             id: 'state-resource-1',
             title: 'Flutter state management concepts',
-            url:
-                'https://www.youtube.com/results?search_query=flutter+state+management+concepts',
+            url: 'https://www.youtube.com/watch?v=3MeN5S3Gv0k',
             platform: 'youtube',
             resourceType: 'video',
           ),
@@ -183,8 +182,7 @@ const demoLearningPaths = <StructuredLearningPath>[
           LessonResource(
             id: 'docker-resource-1',
             title: 'Docker containers and images tutorial',
-            url:
-                'https://www.youtube.com/results?search_query=docker+containers+images+tutorial',
+            url: 'https://www.youtube.com/watch?v=3c-iBn73dDE',
             platform: 'youtube',
             resourceType: 'video',
           ),

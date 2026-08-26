@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { findCatalog, mergeSkillCatalogs } from '../data/skill-catalogs.js';
 import { Job } from '../models/Job.js';
 import { LearningPath } from '../models/LearningPath.js';
 import { Skill } from '../models/Skill.js';
@@ -105,7 +106,8 @@ export const skillGapForJob = asyncHandler(async (req, res) => {
   const profileSkills = new Map(
     (req.user.skills || []).map((item) => [item.name.trim().toLowerCase(), item]),
   );
-  const catalog = await SkillCatalog.findOne({ role: job.title });
+  const mongoCatalogs = await SkillCatalog.find().select('role skills');
+  const catalog = findCatalog(mergeSkillCatalogs(mongoCatalogs), job.title);
   const catalogSkills = catalog?.skills || [];
   const metadata = new Map(
     catalogSkills.map((skill) => [skill.name.trim().toLowerCase(), skill]),

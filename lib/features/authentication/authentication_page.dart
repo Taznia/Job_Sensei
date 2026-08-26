@@ -5,7 +5,9 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/storage/shared_pref.dart';
 import '../../core/errors/app_exception.dart';
+import '../../core/widgets/app_widgets.dart';
 import '../../shared/models/app_user.dart';
+import 'auth_ui.dart';
 import 'password_recovery_dialog.dart';
 
 class AuthenticationPage extends StatefulWidget {
@@ -33,12 +35,6 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
   String? _error;
 
   bool get _isEmployer => _role == 'recruiter';
-
-  String get _roleLabel => switch (_role) {
-        'recruiter' => 'Employer',
-        'admin' => 'Admin',
-        _ => 'User',
-      };
 
   @override
   void initState() {
@@ -125,322 +121,258 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
     );
   }
 
-  Future<void> _demo() async {
-    final credentials = switch (_role) {
-      'recruiter' => ('recruiter@jobsensei.app', 'Recruiter123!'),
-      'admin' => ('admin@jobsensei.app', 'Admin123!'),
-      _ => ('demo@jobsensei.app', 'Demo123!'),
-    };
-    _email.text = credentials.$1;
-    _password.text = credentials.$2;
-    _registering = false;
-    await _submit();
+  void _toggleMode() {
+    setState(() {
+      _registering = !_registering;
+      if (_registering && _role == 'admin') {
+        _role = 'seeker';
+      }
+      _error = null;
+    });
+  }
+
+  void _onBack() {
+    final canPop =
+        widget.onAuthChanged == null && Navigator.of(context).canPop();
+    if (_registering) {
+      setState(() {
+        _registering = false;
+        _error = null;
+      });
+      return;
+    }
+    if (canPop) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final user = Injector.authService().currentUser;
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: widget.onAuthChanged == null
-          ? AppBar(title: Text(user == null ? 'Sign in' : 'Account'))
-          : null,
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
+    final canPop =
+        widget.onAuthChanged == null && Navigator.of(context).canPop();
+    final showBack = canPop || _registering;
+
+    return Theme(
+      data: Theme.of(context).copyWith(
+        textTheme: Theme.of(context).textTheme.apply(fontFamily: 'Roboto'),
+        splashFactory: InkRipple.splashFactory,
+      ),
+      child: Scaffold(
+        backgroundColor: AuthUi.canvas,
+        body: Stack(
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [
-                  AppColors.primaryDark,
-                  AppColors.primary,
-                  AppColors.cyan
-                ]),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: const Icon(Icons.psychology_alt_rounded,
-                            color: Colors.white, size: 30),
-                      ),
-                      const SizedBox(width: 13),
-                      const Text('Job Sensei',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 23,
-                              fontWeight: FontWeight.w900)),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    _registering
-                        ? 'Build a career that moves with you.'
-                        : 'Your next opportunity starts here.',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                      'Personalized guidance, practical tools, and a community for your journey.',
-                      style: TextStyle(color: Colors.white70, height: 1.35)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            if (user != null) ...[
-              _SignedInCard(user: user, onSignOut: _signOut),
-              const SizedBox(height: 18),
-            ],
-            Text(
-              _registering ? 'Create your Job Sensei account' : 'Welcome back',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Community posts, applications, and saved jobs sync through the backend. Chat with Momo still stays on this device.',
-              style: const TextStyle(color: AppColors.muted, height: 1.45),
-            ),
-            const SizedBox(height: 22),
-            Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  if (!_registering) ...[
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Sign in as',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+            const AuthBackdrop(),
+            SafeArea(
+              child: Form(
+                key: _formKey,
+                child: AutofillGroup(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(28, 4, 28, 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        ChoiceChip(
-                          selected: _role == 'seeker',
-                          avatar: const Icon(Icons.person_outline_rounded),
-                          label: const Text('User'),
-                          onSelected: (_) => setState(() => _role = 'seeker'),
+                        if (showBack)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: IconButton(
+                              onPressed: _busy ? null : _onBack,
+                              visualDensity: VisualDensity.compact,
+                              icon: const Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                size: 18,
+                                color: AuthUi.muted,
+                              ),
+                            ),
+                          )
+                        else
+                          const SizedBox(height: 16),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: AppLogo(height: 30),
                         ),
-                        ChoiceChip(
-                          selected: _role == 'recruiter',
-                          avatar: const Icon(Icons.apartment_rounded),
-                          label: const Text('Employer'),
-                          onSelected: (_) =>
-                              setState(() => _role = 'recruiter'),
-                        ),
-                        ChoiceChip(
-                          selected: _role == 'admin',
-                          avatar: const Icon(
-                            Icons.admin_panel_settings_outlined,
+                        const SizedBox(height: 28),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          child: Align(
+                            key: ValueKey(_registering),
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _registering ? 'Create Account' : 'Login',
+                              style: AuthUi.title,
+                            ),
                           ),
-                          label: const Text('Admin'),
-                          onSelected: (_) => setState(() => _role = 'admin'),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (_registering) ...[
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Choose account type',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: SegmentedButton<String>(
-                        segments: const [
-                          ButtonSegment(
-                            value: 'seeker',
-                            icon: Icon(Icons.badge_outlined),
-                            label: Text('Job seeker'),
-                          ),
-                          ButtonSegment(
-                            value: 'recruiter',
-                            icon: Icon(Icons.apartment_rounded),
-                            label: Text('Employer'),
+                        if (!_registering) ...[
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Please sign in to continue.',
+                            style: AuthUi.subtitle,
                           ),
                         ],
-                        selected: {_role},
-                        onSelectionChanged: (roles) => setState(() {
-                          _role = roles.first;
-                          _error = null;
-                        }),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (_isEmployer) ...[
-                      TextFormField(
-                        controller: _organization,
-                        textCapitalization: TextCapitalization.words,
-                        decoration: const InputDecoration(
-                          labelText: 'Organization name',
-                          prefixIcon: Icon(Icons.business_outlined),
+                        const SizedBox(height: 32),
+                        if (user != null) ...[
+                          _SignedInCard(user: user, onSignOut: _signOut),
+                          const SizedBox(height: 22),
+                        ],
+                        _RoleRow(
+                          registering: _registering,
+                          role: _role,
+                          enabled: !_busy,
+                          onChanged: (role) => setState(() {
+                            _role = role;
+                            _error = null;
+                          }),
                         ),
-                        validator: (value) =>
-                            value == null || value.trim().length < 2
-                                ? 'Enter your organization name'
+                        const SizedBox(height: 10),
+                        if (_registering) ...[
+                          if (_isEmployer) ...[
+                            AuthTextField(
+                              label: 'ORGANIZATION',
+                              icon: Icons.business_outlined,
+                              controller: _organization,
+                              textCapitalization: TextCapitalization.words,
+                              autofillHints: const [
+                                AutofillHints.organizationName
+                              ],
+                              textInputAction: TextInputAction.next,
+                              enabled: !_busy,
+                              autofocus: true,
+                              validator: (value) =>
+                                  value == null || value.trim().length < 2
+                                      ? 'Enter your organization name'
+                                      : null,
+                            ),
+                          ],
+                          AuthTextField(
+                            label: 'FULL NAME',
+                            icon: Icons.person_outline_rounded,
+                            controller: _name,
+                            textCapitalization: TextCapitalization.words,
+                            autofillHints: const [AutofillHints.name],
+                            textInputAction: TextInputAction.next,
+                            enabled: !_busy,
+                            autofocus: !_isEmployer,
+                            validator: (value) =>
+                                (value == null || value.trim().length < 2)
+                                    ? 'Enter your name'
+                                    : null,
+                          ),
+                        ],
+                        AuthTextField(
+                          label: _registering && _isEmployer
+                              ? 'WORK EMAIL'
+                              : 'EMAIL',
+                          icon: Icons.mail_outline_rounded,
+                          controller: _email,
+                          keyboardType: TextInputType.emailAddress,
+                          autofillHints: const [AutofillHints.email],
+                          textInputAction: TextInputAction.next,
+                          enabled: !_busy,
+                          autofocus: !_registering,
+                          validator: (value) =>
+                              (value == null || !value.contains('@'))
+                                  ? 'Enter a valid email'
+                                  : null,
+                        ),
+                        AuthTextField(
+                          label: 'PASSWORD',
+                          icon: Icons.lock_outline_rounded,
+                          controller: _password,
+                          obscureText: _obscurePassword,
+                          autofillHints: [
+                            _registering
+                                ? AutofillHints.newPassword
+                                : AutofillHints.password,
+                          ],
+                          textInputAction: _registering
+                              ? TextInputAction.next
+                              : TextInputAction.done,
+                          enabled: !_busy,
+                          onFieldSubmitted: (_) {
+                            if (!_registering) _submit();
+                          },
+                          validator: (value) =>
+                              (value == null || value.length < 8)
+                                  ? 'Use at least 8 characters'
+                                  : null,
+                          trailing: _PasswordTrailing(
+                            obscure: _obscurePassword,
+                            showForgot: !_registering,
+                            enabled: !_busy,
+                            onToggleObscure: () => setState(
+                                () => _obscurePassword = !_obscurePassword),
+                            onForgot: _showPasswordRecovery,
+                          ),
+                        ),
+                        if (_registering) ...[
+                          AuthTextField(
+                            label: 'CONFIRM PASSWORD',
+                            icon: Icons.lock_outline_rounded,
+                            controller: _confirmPassword,
+                            obscureText: _obscurePassword,
+                            autofillHints: const [AutofillHints.newPassword],
+                            textInputAction: TextInputAction.done,
+                            enabled: !_busy,
+                            validator: (value) => value != _password.text
+                                ? 'Passwords do not match'
                                 : null,
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    TextFormField(
-                      controller: _name,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                          labelText: 'Full name',
-                          prefixIcon: Icon(Icons.person_outline_rounded)),
-                      validator: (value) =>
-                          (value == null || value.trim().length < 2)
-                              ? 'Enter your name'
-                              : null,
-                    ),
-                  ],
-                  if (_registering) const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                        labelText: _registering && _isEmployer
-                            ? 'Work email address'
-                            : 'Email address',
-                        prefixIcon: Icon(Icons.mail_outline_rounded)),
-                    validator: (value) =>
-                        (value == null || !value.contains('@'))
-                            ? 'Enter a valid email'
-                            : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _password,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded),
-                      suffixIcon: IconButton(
-                        onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
-                        icon: Icon(_obscurePassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined),
-                      ),
-                    ),
-                    validator: (value) => (value == null || value.length < 8)
-                        ? 'Use at least 8 characters'
-                        : null,
-                  ),
-                  if (_registering) ...[
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _confirmPassword,
-                      obscureText: _obscurePassword,
-                      decoration: const InputDecoration(
-                        labelText: 'Confirm password',
-                        prefixIcon: Icon(Icons.lock_reset_rounded),
-                      ),
-                      validator: (value) => value != _password.text
-                          ? 'Passwords do not match'
-                          : null,
-                    ),
-                    if (_isEmployer) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.09),
-                          borderRadius: BorderRadius.circular(14),
+                          ),
+                          if (_isEmployer) ...[
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Admin verification is required before an employer can post jobs or manage applicants.',
+                              style: TextStyle(
+                                fontFamily: AuthUi.fontFamily,
+                                color: AuthUi.muted,
+                                fontSize: 12,
+                                height: 1.45,
+                              ),
+                            ),
+                          ],
+                        ],
+                        if (_error != null) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            _error!,
+                            style: const TextStyle(
+                              fontFamily: AuthUi.fontFamily,
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.w600,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 22),
+                        AuthGradientButton(
+                          label: _registering ? 'SIGN UP' : 'LOGIN',
+                          busy: _busy,
+                          onPressed: _busy ? null : _submit,
                         ),
-                        child: const Text(
-                          'Admin verification is required before an employer can post jobs or manage applicants.',
-                          style: TextStyle(fontSize: 12, height: 1.4),
+                        const SizedBox(height: 36),
+                        AuthFooterPrompt(
+                          prompt: _registering
+                              ? 'Already have an account? '
+                              : "Don't have an account? ",
+                          action: _registering ? 'Sign in' : 'Sign up',
+                          onTap: _busy ? null : _toggleMode,
                         ),
-                      ),
-                    ],
-                  ],
-                  if (!_registering)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _busy ? null : _showPasswordRecovery,
-                        child: const Text('Forgot password?'),
-                      ),
-                    )
-                  else
-                    const SizedBox(height: 16),
-                  if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(color: AppColors.danger),
-                      ),
-                    ),
-                  FilledButton(
-                    onPressed: _busy ? null : _submit,
-                    child: _busy
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(_registering
-                            ? _isEmployer
-                                ? 'Submit employer account'
-                                : 'Create job seeker account'
-                            : 'Sign in'),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: _busy
-                        ? null
-                        : () => setState(() {
-                              _registering = !_registering;
-                              if (_registering && _role == 'admin') {
-                                _role = 'seeker';
-                              }
-                              _error = null;
-                            }),
-                    child: Text(
-                      _registering
-                          ? 'Already have an account? Sign in'
-                          : 'New here? Create an account',
+                        if (!_registering) ...[
+                          const SizedBox(height: 24),
+                          const Text(
+                            'Test accounts\n'
+                            'User: demo@jobsensei.app / Demo123!\n'
+                            'Employer: recruiter@jobsensei.app / Recruiter123!\n'
+                            'Admin: admin@jobsensei.app / Admin123!',
+                            style: TextStyle(
+                              color: AuthUi.muted,
+                              fontSize: 11,
+                              height: 1.45,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  if (!_registering) ...[
-                    OutlinedButton(
-                      onPressed: _busy ? null : _demo,
-                      child: Text('Continue with $_roleLabel demo'),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Demo accounts after backend seed:\n'
-                      'Taznia: demo@jobsensei.app / Demo123!\n'
-                      'Nadia: recruiter@jobsensei.app / Recruiter123!\n'
-                      'Admin: admin@jobsensei.app / Admin123!',
-                      style: TextStyle(
-                          color: AppColors.muted, fontSize: 11, height: 1.45),
-                    ),
-                  ],
-                ],
+                ),
               ),
             ),
           ],
@@ -471,6 +403,135 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
   }
 }
 
+class _RoleRow extends StatelessWidget {
+  const _RoleRow({
+    required this.registering,
+    required this.role,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final bool registering;
+  final String role;
+  final bool enabled;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final chips = registering
+        ? [
+            (value: 'seeker', label: 'Job seeker', icon: Icons.badge_outlined),
+            (
+              value: 'recruiter',
+              label: 'Employer',
+              icon: Icons.apartment_rounded
+            ),
+          ]
+        : [
+            (
+              value: 'seeker',
+              label: 'User',
+              icon: Icons.person_outline_rounded
+            ),
+            (
+              value: 'recruiter',
+              label: 'Employer',
+              icon: Icons.apartment_rounded
+            ),
+            (
+              value: 'admin',
+              label: 'Admin',
+              icon: Icons.admin_panel_settings_outlined
+            ),
+          ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          registering ? 'ACCOUNT TYPE' : 'SIGN IN AS',
+          style: AuthUi.label,
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final chip in chips)
+              AuthRoleChip(
+                label: chip.label,
+                icon: chip.icon,
+                selected: role == chip.value,
+                onTap: enabled ? () => onChanged(chip.value) : () {},
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _PasswordTrailing extends StatelessWidget {
+  const _PasswordTrailing({
+    required this.obscure,
+    required this.showForgot,
+    required this.enabled,
+    required this.onToggleObscure,
+    required this.onForgot,
+  });
+
+  final bool obscure;
+  final bool showForgot;
+  final bool enabled;
+  final VoidCallback onToggleObscure;
+  final VoidCallback onForgot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: enabled ? onToggleObscure : null,
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            icon: Icon(
+              obscure
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              size: 20,
+              color: AuthUi.muted,
+            ),
+          ),
+          if (showForgot)
+            TextButton(
+              onPressed: enabled ? onForgot : null,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+              child: const Text(
+                'FORGOT',
+                style: TextStyle(
+                  fontFamily: AuthUi.fontFamily,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SignedInCard extends StatelessWidget {
   const _SignedInCard({required this.user, required this.onSignOut});
 
@@ -479,31 +540,55 @@ class _SignedInCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              child: Text(user.name.isEmpty ? '?' : user.name[0].toUpperCase()),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            child: Text(user.name.isEmpty ? '?' : user.name[0].toUpperCase()),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.name,
+                  style: const TextStyle(
+                    fontFamily: AuthUi.fontFamily,
+                    fontWeight: FontWeight.w800,
+                    color: AuthUi.ink,
+                  ),
+                ),
+                Text(
+                  user.email,
+                  style: const TextStyle(
+                    fontFamily: AuthUi.fontFamily,
+                    color: AuthUi.muted,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(user.name,
-                      style: const TextStyle(fontWeight: FontWeight.w800)),
-                  Text(user.email,
-                      style: const TextStyle(color: AppColors.muted)),
-                ],
-              ),
-            ),
-            TextButton(onPressed: onSignOut, child: const Text('Sign out')),
-          ],
-        ),
+          ),
+          TextButton(
+            onPressed: onSignOut,
+            child: const Text('Sign out'),
+          ),
+        ],
       ),
     );
   }

@@ -6,9 +6,18 @@ class LearningService {
   final DioClient _client;
 
   Future<Map<String, dynamic>> skillGaps({String? role}) async {
-    return await _client.get('/learning/skill-gaps', query: {
-      if (role != null) 'role': role,
-    }) as Map<String, dynamic>;
+    final raw = await _client.get('/learning/skill-gaps', query: {
+      if (role != null && role.isNotEmpty) 'role': role,
+    });
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    if (raw is List) {
+      return {
+        'role': role ?? '',
+        'gaps': raw,
+      };
+    }
+    return <String, dynamic>{};
   }
 
   Future<List<dynamic>> resources({String? skill}) async {

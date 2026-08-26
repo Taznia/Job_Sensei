@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/injector.dart';
 import '../../../../app/router.dart';
+import '../../../../app/shell_tabs.dart';
 import '../../../../shared/models/career_profile_models.dart';
 import '../../data/repositories/in_memory_career_profile_repository.dart';
 import '../../domain/repositories/career_profile_repository.dart';
@@ -432,7 +433,10 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
       ProfilePowersStrip(
         onJobMatching: () => _goTo(AppRouter.jobs),
         onResumeSuggestions: () => _goTo(AppRouter.resumes),
-        onSkillGap: () => _goTo(AppRouter.skillGap),
+        onSkillGap: () {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          ShellTabs.openLearn();
+        },
       ),
       ProfileCta(onTap: _editBasics),
       _accountSection(),

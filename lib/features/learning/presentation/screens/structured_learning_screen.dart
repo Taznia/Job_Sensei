@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/app_widgets.dart';
@@ -8,6 +7,7 @@ import '../../data/repositories/learning_path_repository.dart';
 import '../../data/repositories/learning_progress_repository.dart';
 import '../../../../app/injector.dart';
 import '../../../../shared/models/learning_progress_models.dart';
+import 'in_app_video_screen.dart';
 
 class StructuredLearningScreen extends StatefulWidget {
   const StructuredLearningScreen({
@@ -216,7 +216,7 @@ class _LearningPathDetailsScreenState extends State<LearningPathDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Learning path')),
+      appBar: AppBar(title: const Text('Course Detail')),
       body: FutureBuilder<StructuredLearningPath>(
         future: _details,
         builder: (context, snapshot) {
@@ -250,7 +250,7 @@ class _LearningPathDetailsScreenState extends State<LearningPathDetailsScreen> {
                 ],
               ),
               const SizedBox(height: 24),
-              const SectionTitle('Ordered lessons'),
+              const SectionTitle('Modules'),
               const SizedBox(height: 10),
               ...path.lessons.map(
                 (lesson) => Padding(
@@ -276,9 +276,20 @@ class _LearningPathDetailsScreenState extends State<LearningPathDetailsScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Lesson completion and progress records connect here through Nazifa\'s Learning Progress module.',
-                style: TextStyle(color: AppColors.muted, fontSize: 12),
+              FilledButton.icon(
+                onPressed: path.lessons.isEmpty
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => LessonDetailsScreen(
+                              lesson: path.lessons.first,
+                              pathId: path.id,
+                              repository: widget.progressRepository,
+                            ),
+                          ),
+                        ),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text('Continue learning'),
               ),
             ],
           );
@@ -313,8 +324,17 @@ class _LessonDetailsScreenState extends State<LessonDetailsScreen> {
   Future<void> _open(LessonResource resource) async {
     await widget.repository
         .start(pathId: widget.pathId, resourceId: resource.id);
-    await launchUrl(Uri.parse(resource.url),
-        mode: LaunchMode.externalApplication);
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => InAppVideoScreen(
+          title: resource.title,
+          url: resource.url,
+          skill: widget.lesson.title,
+          duration: widget.lesson.estimatedDuration,
+        ),
+      ),
+    );
     await widget.repository
         .complete(pathId: widget.pathId, resourceId: resource.id);
     if (mounted) {
@@ -325,8 +345,9 @@ class _LessonDetailsScreenState extends State<LessonDetailsScreen> {
   Future<void> _complete(LessonResource resource) async {
     await widget.repository
         .complete(pathId: widget.pathId, resourceId: resource.id);
-    if (mounted)
+    if (mounted) {
       setState(() => _progress = widget.repository.forPath(widget.pathId));
+    }
   }
 
   @override
@@ -375,7 +396,7 @@ class _LessonDetailsScreenState extends State<LessonDetailsScreen> {
                         ? const Icon(Icons.verified_rounded,
                             color: AppColors.success)
                         : IconButton(
-                            icon: const Icon(Icons.open_in_new_rounded),
+                            icon: const Icon(Icons.play_circle_outline_rounded),
                             onPressed: () => _open(resource)),
                     onTap: () => _open(resource),
                   ),
@@ -412,6 +433,3 @@ class _LessonDetailsScreenState extends State<LessonDetailsScreen> {
   }
 }
 
-extension<T> on List<T> {
-  T? get firstOrNull => isEmpty ? null : first;
-}
