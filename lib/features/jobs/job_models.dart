@@ -1,19 +1,17 @@
 import '../../shared/models/career_profile_models.dart';
 import '../../shared/models/learning_models.dart';
 
-/// A job requirement enriched with the information Module 3 needs to explain
-/// a gap and hand the skill to Module 4's learning path.
 class JobSkillRequirement {
-  const JobSkillRequirement({
-    required this.id,
-    required this.name,
-    required this.category,
-    required this.priority,
-    required this.reason,
-    this.learningPathAvailable = false,
-    this.learningPathId,
-  });
-
+  const JobSkillRequirement(
+      {required this.id,
+      required this.name,
+      required this.category,
+      required this.priority,
+      required this.reason,
+      this.learningPathAvailable = false,
+      this.learningPathId,
+      this.currentLevel = 0,
+      this.requiredLevel = 80});
   final String id;
   final String name;
   final String category;
@@ -21,20 +19,20 @@ class JobSkillRequirement {
   final String reason;
   final bool learningPathAvailable;
   final String? learningPathId;
+  final int currentLevel;
+  final int requiredLevel;
 }
 
 class JobPosting {
-  const JobPosting({
-    required this.id,
-    required this.title,
-    required this.company,
-    required this.location,
-    required this.type,
-    required this.workMode,
-    required this.description,
-    required this.requiredSkills,
-  });
-
+  const JobPosting(
+      {required this.id,
+      required this.title,
+      required this.company,
+      required this.location,
+      required this.type,
+      required this.workMode,
+      required this.description,
+      required this.requiredSkills});
   final String id;
   final String title;
   final String company;
@@ -45,21 +43,29 @@ class JobPosting {
   final List<JobSkillRequirement> requiredSkills;
 }
 
-class JobSkillGapAnalysis {
-  const JobSkillGapAnalysis({
-    required this.job,
-    required this.strongSkills,
-    required this.missingSkills,
-  });
+class JobSkillMatch {
+  const JobSkillMatch(
+      {required this.name,
+      required this.currentLevel,
+      required this.requiredLevel});
+  final String name;
+  final int currentLevel;
+  final int requiredLevel;
+}
 
+class JobSkillGapAnalysis {
+  const JobSkillGapAnalysis(
+      {required this.job,
+      required this.strongSkills,
+      required this.missingSkills,
+      this.strongSkillDetails = const []});
   final JobPosting job;
   final List<SkillEntry> strongSkills;
+  final List<JobSkillMatch> strongSkillDetails;
   final List<JobSkillRequirement> missingSkills;
-
-  int get matchPercent {
-    if (job.requiredSkills.isEmpty) return 0;
-    return ((strongSkills.length / job.requiredSkills.length) * 100).round();
-  }
+  int get matchPercent => job.requiredSkills.isEmpty
+      ? 0
+      : ((strongSkills.length / job.requiredSkills.length) * 100).round();
 }
 
 /// Module 3: compare the selected job's requirements with career-profile

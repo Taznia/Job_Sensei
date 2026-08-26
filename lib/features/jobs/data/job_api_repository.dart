@@ -27,20 +27,30 @@ class ApiJobRepository implements JobRepository {
     final missing = (response['missingSkills'] as List<dynamic>? ?? const [])
         .map((item) => _requirementFromJson(item as Map<String, dynamic>))
         .toList();
-    final matched = (response['matchedSkills'] as List<dynamic>? ?? const [])
-        .map((name) => SkillEntry(
-            id: 'matched-${name.toString()}',
-            name: name.toString(),
-            level: SkillLevel.intermediate))
-        .toList();
+    final matchedJson = response['matchedSkills'] as List<dynamic>? ?? const [];
+    final matched = <SkillEntry>[];
+    final details = <JobSkillMatch>[];
+    for (final raw in matchedJson) {
+      final item = Map<String, dynamic>.from(raw as Map);
+      final name = item['name'] as String;
+      matched.add(SkillEntry(
+          id: 'matched-$name', name: name, level: SkillLevel.intermediate));
+      details.add(JobSkillMatch(
+          name: name,
+          currentLevel: item['currentLevel'] as int? ?? 0,
+          requiredLevel: item['requiredLevel'] as int? ?? 80));
+    }
     return JobSkillGapAnalysis(
-        job: job, strongSkills: matched, missingSkills: missing);
+        job: job,
+        strongSkills: matched,
+        strongSkillDetails: details,
+        missingSkills: missing);
   }
 
   static JobPosting _jobFromJson(Map<String, dynamic> json) {
-    final names = (json['skills'] as List<dynamic>? ??
+    final names = json['skills'] as List<dynamic>? ??
         json['requirements'] as List<dynamic>? ??
-        const []);
+        const [];
     return JobPosting(
       id: json['id'] as String,
       title: json['title'] as String? ?? 'Untitled role',
@@ -71,6 +81,8 @@ class ApiJobRepository implements JobRepository {
             'This skill is required for the selected role.',
         learningPathAvailable: json['learningPathAvailable'] as bool? ?? false,
         learningPathId: json['learningPathId'] as String?,
+        currentLevel: json['currentLevel'] as int? ?? 0,
+        requiredLevel: json['requiredLevel'] as int? ?? 80,
       );
 
   static String _label(String value) => value

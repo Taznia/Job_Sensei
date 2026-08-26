@@ -9,7 +9,7 @@ import '../features/community/domain/repositories/community_repository.dart';
 import '../features/learning/data/services/youtube_resource_service.dart';
 import '../features/learning/data/repositories/learning_progress_repository.dart';
 import '../services/auth_service.dart';
-import '../features/profile/data/repositories/in_memory_career_profile_repository.dart';
+import '../features/profile/data/repositories/api_career_profile_repository.dart';
 import '../features/profile/domain/repositories/career_profile_repository.dart';
 
 /// A lightweight composition root. Replace with get_it or Riverpod if the
@@ -41,10 +41,8 @@ abstract final class Injector {
   static LearningProgressRepository learningProgressRepository() =>
       _learningProgress;
 
-  /// Single seeded profile for now. A REST implementation drops in here without
-  /// the profile screens changing.
   static final CareerProfileRepository _careerProfileRepository =
-      InMemoryCareerProfileRepository();
+      ApiCareerProfileRepository();
 
   static CareerProfileRepository careerProfileRepository() =>
       _careerProfileRepository;

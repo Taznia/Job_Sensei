@@ -42,7 +42,9 @@ class _StructuredLearningScreenState extends State<StructuredLearningScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedSkill = widget.initialSkills?.firstOrNull;
+    final requestedSkills = widget.initialSkills ?? const <String>[];
+    final selectedSkill =
+        requestedSkills.length == 1 ? requestedSkills.first : null;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -73,6 +75,14 @@ class _StructuredLearningScreenState extends State<StructuredLearningScreen> {
                     return const Padding(
                       padding: EdgeInsets.symmetric(vertical: 56),
                       child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return const EmptyState(
+                      icon: Icons.cloud_off_rounded,
+                      title: 'Learning resources unavailable',
+                      message:
+                          'The server could not load learning resources. Please try again.',
                     );
                   }
                   final paths = snapshot.data ?? const [];
