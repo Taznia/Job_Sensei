@@ -18,7 +18,6 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
   final _descriptionController = TextEditingController();
   String _category = 'Technology';
   String _visualKey = 'code';
-  CommunityPrivacy _privacy = CommunityPrivacy.public;
 
   static const _categories = [
     'Technology',
@@ -44,7 +43,6 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
         category: _category,
-        privacy: _privacy,
         visualKey: _visualKey,
       ),
     );
@@ -71,7 +69,6 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
               name: _nameController.text.trim(),
               category: _category,
               visualKey: _visualKey,
-              privacy: _privacy,
             ),
             const SizedBox(height: 22),
             TextFormField(
@@ -169,33 +166,6 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
               }).toList(),
             ),
             const SizedBox(height: 20),
-            Text('Community access',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            SegmentedButton<CommunityPrivacy>(
-              segments: const [
-                ButtonSegment(
-                  value: CommunityPrivacy.public,
-                  icon: Icon(Icons.public_rounded),
-                  label: Text('Public'),
-                ),
-                ButtonSegment(
-                  value: CommunityPrivacy.private,
-                  icon: Icon(Icons.lock_outline_rounded),
-                  label: Text('Private'),
-                ),
-              ],
-              selected: {_privacy},
-              onSelectionChanged: (value) =>
-                  setState(() => _privacy = value.first),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _privacy == CommunityPrivacy.public
-                  ? 'Anyone can discover and join this community.'
-                  : 'People can discover it, but an admin must approve requests.',
-              style: const TextStyle(color: AppColors.muted, fontSize: 12),
-            ),
             const SizedBox(height: 26),
             FilledButton.icon(
               onPressed: _submit,
@@ -215,13 +185,11 @@ class _CommunityPreview extends StatelessWidget {
     required this.name,
     required this.category,
     required this.visualKey,
-    required this.privacy,
   });
 
   final String name;
   final String category;
   final String visualKey;
-  final CommunityPrivacy privacy;
 
   @override
   Widget build(BuildContext context) {
@@ -278,10 +246,8 @@ class _CommunityPreview extends StatelessWidget {
               ],
             ),
           ),
-          Icon(
-            privacy == CommunityPrivacy.public
-                ? Icons.public_rounded
-                : Icons.lock_outline_rounded,
+          const Icon(
+            Icons.public_rounded,
             color: Colors.white,
             size: 20,
           ),

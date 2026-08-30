@@ -168,10 +168,19 @@ class InMemoryCommunityRepository implements CommunityRepository {
       category: request.category,
       visualKey: request.visualKey,
       memberCount: 1,
-      privacy: request.privacy,
+      privacy: CommunityPrivacy.public,
       createdById: 'current-user',
       createdAt: DateTime.now(),
       isJoined: true,
+      isOwner: true,
+      members: const [
+        CommunityMember(
+          id: 'current-user',
+          name: 'Taznia',
+          email: 'demo@jobsensei.app',
+          role: 'seeker',
+        ),
+      ],
     );
     _groups = [group, ..._groups];
     return group;
@@ -195,6 +204,25 @@ class InMemoryCommunityRepository implements CommunityRepository {
   }
 
   @override
+  Future<CommunityGroup> removeMember({
+    required String communityId,
+    required String userId,
+  }) async {
+    await _simulateLatency();
+    final index = _groups.indexWhere((group) => group.id == communityId);
+    if (index < 0) throw StateError('Community not found.');
+    final current = _groups[index];
+    final members =
+        current.members.where((member) => member.id != userId).toList();
+    final updated = current.copyWith(
+      members: members,
+      memberCount: members.length,
+    );
+    _groups = [..._groups]..[index] = updated;
+    return updated;
+  }
+
+  @override
   Future<CommunityPost> createPost(CreatePostRequest request) async {
     await _simulateLatency();
     final timestamp = DateTime.now().microsecondsSinceEpoch;
@@ -206,6 +234,7 @@ class InMemoryCommunityRepository implements CommunityRepository {
         kind: pending.kind,
         sizeBytes: pending.sizeBytes,
         localPath: pending.localPath,
+        bytes: pending.bytes,
       );
     }).toList();
     final post = CommunityPost(
@@ -224,6 +253,12 @@ class InMemoryCommunityRepository implements CommunityRepository {
     );
     _posts = [post, ..._posts];
     return post;
+  }
+
+  @override
+  Future<void> deletePost(String postId) async {
+    await _simulateLatency();
+    _posts = _posts.where((post) => post.id != postId).toList();
   }
 
   @override
@@ -249,6 +284,7 @@ class InMemoryCommunityRepository implements CommunityRepository {
   Future<CommunityPost> addComment({
     required String postId,
     required String body,
+    String? parentCommentId,
   }) {
     return _updatePost(postId, (post) {
       final comment = CommunityComment(
@@ -257,12 +293,21 @@ class InMemoryCommunityRepository implements CommunityRepository {
         author: 'Taznia',
         body: body,
         createdAt: DateTime.now(),
+        parentCommentId: parentCommentId,
       );
       return post.copyWith(
         commentCount: post.commentCount + 1,
         comments: [...post.comments, comment],
       );
     });
+  }
+
+  @override
+  Future<void> reportPost({
+    required String postId,
+    required String reason,
+  }) async {
+    await _simulateLatency();
   }
 
   Future<CommunityPost> _updatePost(

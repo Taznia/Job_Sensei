@@ -38,7 +38,8 @@ class ProfileTopBar extends StatelessWidget {
           SizedBox(
             width: 42,
             child: canPop
-                ? _SquareButton(icon: Icons.chevron_left_rounded, onTap: onBack!)
+                ? _SquareButton(
+                    icon: Icons.chevron_left_rounded, onTap: onBack!)
                 : null,
           ),
           const Expanded(
@@ -211,7 +212,8 @@ class _HeroAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: url == null ? ProfileDesign.avatarGradient : null,
         borderRadius: BorderRadius.circular(19),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
+        border:
+            Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
         image: url == null
             ? null
             : DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
@@ -297,13 +299,13 @@ class ProfileCard extends StatelessWidget {
     super.key,
     required this.icon,
     required this.title,
-    required this.onEdit,
+    this.onEdit,
     required this.child,
   });
 
   final IconData icon;
   final String title;
-  final VoidCallback onEdit;
+  final VoidCallback? onEdit;
   final Widget child;
 
   @override
@@ -337,7 +339,7 @@ class ProfileCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(child: Text(title, style: ProfileDesign.sectionTitle)),
-              _EditLink(onTap: onEdit),
+              if (onEdit != null) _EditLink(onTap: onEdit!),
             ],
           ),
           const SizedBox(height: 12),

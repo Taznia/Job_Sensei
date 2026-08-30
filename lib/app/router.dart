@@ -2,21 +2,28 @@ import 'package:flutter/material.dart';
 
 import '../features/admin/admin_page.dart';
 import '../features/ai/presentation/screens/ai_chat_screen.dart';
+import '../features/ai/presentation/widgets/momo_fab.dart';
 import '../features/applications/applications_page.dart';
 import '../features/authentication/authentication_page.dart';
+import '../features/authentication/role_account_page.dart';
 import '../features/community/presentation/screens/community_screen.dart';
 import '../features/jobs/jobs_page.dart';
-import '../features/learning/presentation/screens/learning_resources_screen.dart';
-import '../features/learning/presentation/screens/skill_gap_screen.dart';
+import '../features/jobs/job_models.dart';
+import '../features/home/seeker_home_page.dart';
+import '../features/learning/presentation/screens/learning_hub_screen.dart';
 import '../features/notifications/notifications_page.dart';
 import '../features/profile/presentation/screens/career_profile_screen.dart';
 import '../features/resumes/resumes_page.dart';
 import '../core/constants/app_colors.dart';
 import 'injector.dart';
+import 'shell_tabs.dart';
 
 abstract final class AppRouter {
   static const home = '/';
   static const authentication = '/authentication';
+  static const login = '/login';
+  static const register = '/register';
+  static const account = '/account';
   static const profile = '/profile';
   static const jobs = '/jobs';
   static const resumes = '/resumes';
@@ -30,27 +37,143 @@ abstract final class AppRouter {
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     final builder = switch (settings.name) {
-      home => (_) => const AppShell(),
+      home => (_) => const AuthGate(),
       authentication => (_) => const AuthenticationPage(),
-      profile => (_) => CareerProfileScreen(
-            repository: Injector.careerProfileRepository(),
+      login => (_) => const AuthenticationPage(),
+      register => (_) => const AuthenticationPage(register: true),
+      profile => (_) => _RoleGuard(
+            allowedRoles: const {'seeker'},
+            child: CareerProfileScreen(
+              repository: Injector.careerProfileRepository(),
+            ),
           ),
       jobs => (_) => const JobsPage(),
-      resumes => (_) => const ResumesPage(),
-      applications => (_) => const ApplicationsPage(),
-      ai => (_) => AiChatScreen(
-            service: Injector.chatService(),
-            historyRepository: Injector.chatHistoryRepository(),
-            attachmentPicker: Injector.aiAttachmentPickerService(),
+      resumes => (_) => const _RoleGuard(
+            allowedRoles: {'seeker'},
+            child: ResumesPage(),
           ),
-      learning => (_) => const LearningResourcesScreen(),
-      skillGap => (_) => const SkillGapScreen(),
+      applications => (_) => const ApplicationsPage(),
+      ai => (_) => _RoleGuard(
+            allowedRoles: const {'seeker'},
+            child: AiChatScreen(
+              service: Injector.chatService(),
+              historyRepository: Injector.chatHistoryRepository(),
+              attachmentPicker: Injector.aiAttachmentPickerService(),
+            ),
+          ),
+      learning => (_) {
+          final argument = settings.arguments;
+          return _RoleGuard(
+            allowedRoles: const {'seeker'},
+            child: argument is JobPosting
+                ? LearningHubScreen(initialJob: argument)
+                : const LearningHubScreen(),
+          );
+        },
+      skillGap => (_) => const _OpenLearnTab(),
       community => (_) => const CommunityScreen(),
       notifications => (_) => const NotificationsPage(),
-      admin => (_) => const AdminPage(),
+      admin => (_) => const _RoleGuard(
+            allowedRoles: {'admin'},
+            child: AdminPage(),
+          ),
+      account => (_) => const RoleAccountPage(),
       _ => (_) => const AppShell(),
     };
     return MaterialPageRoute<void>(settings: settings, builder: builder);
+  }
+}
+
+class _OpenLearnTab extends StatefulWidget {
+  const _OpenLearnTab();
+
+  @override
+  State<_OpenLearnTab> createState() => _OpenLearnTabState();
+}
+
+class _OpenLearnTabState extends State<_OpenLearnTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ShellTabs.openLearn();
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _RoleGuard extends StatelessWidget {
+  const _RoleGuard({
+    required this.allowedRoles,
+    required this.child,
+  });
+
+  final Set<String> allowedRoles;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final role = Injector.authService().currentUser?.role;
+    if (role != null && allowedRoles.contains(role)) return child;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Access restricted')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.lock_outline_rounded,
+                size: 44,
+                color: AppColors.muted,
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'This feature is not available for your account type.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => Navigator.of(context)
+                    .pushNamedAndRemoveUntil(AppRouter.home, (route) => false),
+                child: const Text('Back to my home'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  @override
+  Widget build(BuildContext context) {
+    final auth = Injector.authService();
+    if (auth.currentUser == null) {
+      return AuthenticationPage(
+        onAuthChanged: () => setState(() {}),
+      );
+    }
+    return const AppShell();
   }
 }
 
@@ -81,23 +204,138 @@ class _AppShellState extends State<AppShell> {
     _NavItem('Profile', Icons.person_outline_rounded, Icons.person_rounded),
   ];
 
-  late final List<Widget> _screens = [
-    CommunityScreen(repository: Injector.communityRepository()),
-    AiChatScreen(
-      service: Injector.chatService(),
-      historyRepository: Injector.chatHistoryRepository(),
-      attachmentPicker: Injector.aiAttachmentPickerService(),
-    ),
-    const SkillGapScreen(),
-    const LearningResourcesScreen(),
-    CareerProfileScreen(repository: Injector.careerProfileRepository()),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    ShellTabs.request.addListener(_onTabRequest);
+    final role = Injector.authService().currentUser?.role ?? 'seeker';
+    switch (role) {
+      case 'recruiter':
+        _items = const [
+          _NavItem(
+            'Job Posts',
+            Icons.work_outline_rounded,
+            Icons.work_rounded,
+          ),
+          _NavItem(
+            'Applicants',
+            Icons.people_outline_rounded,
+            Icons.people_rounded,
+          ),
+          _NavItem(
+            'Community',
+            Icons.groups_2_outlined,
+            Icons.groups_2_rounded,
+          ),
+          _NavItem(
+            'Account',
+            Icons.manage_accounts_outlined,
+            Icons.manage_accounts_rounded,
+          ),
+        ];
+        _screens = [
+          const JobsPage(),
+          const ApplicationsPage(),
+          CommunityScreen(repository: Injector.communityRepository()),
+          const RoleAccountPage(),
+        ];
+        break;
+      case 'admin':
+        _items = const [
+          _NavItem(
+            'Admin',
+            Icons.admin_panel_settings_outlined,
+            Icons.admin_panel_settings_rounded,
+          ),
+          _NavItem('Jobs', Icons.work_outline_rounded, Icons.work_rounded),
+          _NavItem(
+            'Community',
+            Icons.groups_2_outlined,
+            Icons.groups_2_rounded,
+          ),
+          _NavItem(
+            'Account',
+            Icons.manage_accounts_outlined,
+            Icons.manage_accounts_rounded,
+          ),
+        ];
+        _screens = [
+          const AdminPage(),
+          const JobsPage(),
+          CommunityScreen(repository: Injector.communityRepository()),
+          const RoleAccountPage(),
+        ];
+        break;
+      default:
+        _items = const [
+          _NavItem('Home', Icons.home_outlined, Icons.home_rounded),
+          _NavItem('Jobs', Icons.work_outline_rounded, Icons.work_rounded),
+          _NavItem('Learn', Icons.school_outlined, Icons.school_rounded),
+          _NavItem(
+            'Community',
+            Icons.groups_2_outlined,
+            Icons.groups_2_rounded,
+          ),
+          _NavItem(
+            'Profile',
+            Icons.person_outline_rounded,
+            Icons.person_rounded,
+          ),
+        ];
+        _screens = [
+          const SeekerHomePage(),
+          const JobsPage(),
+          const LearningHubScreen(),
+          CommunityScreen(repository: Injector.communityRepository()),
+          CareerProfileScreen(
+            repository: Injector.careerProfileRepository(),
+          ),
+        ];
+        break;
+    }
+  }
+
+  void _onTabRequest() {
+    final request = ShellTabs.request.value;
+    final index = switch (request) {
+      'jobs' => _screens.indexWhere((screen) => screen is JobsPage),
+      'learn' => _screens.indexWhere((screen) => screen is LearningHubScreen),
+      'profile' =>
+        _screens.indexWhere((screen) => screen is CareerProfileScreen),
+      _ => -1,
+    };
+    if (index < 0 || index == _index) return;
+    setState(() => _index = index);
+  }
+
+  @override
+  void dispose() {
+    ShellTabs.request.removeListener(_onTabRequest);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 820;
+        final isSeeker = Injector.authService().currentUser?.role == null ||
+            Injector.authService().currentUser?.role == 'seeker';
+        final aiFab = isSeeker
+            ? MomoFab(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AiChatScreen(
+                      service: Injector.chatService(),
+                      historyRepository: Injector.chatHistoryRepository(),
+                      attachmentPicker: Injector.aiAttachmentPickerService(),
+                    ),
+                  ),
+                ),
+              )
+            : null;
         final content = IndexedStack(
           index: _index,
           children: _screens.indexed.map((entry) {
@@ -111,6 +349,7 @@ class _AppShellState extends State<AppShell> {
         if (wide) {
           return Scaffold(
             backgroundColor: AppColors.background,
+            floatingActionButton: aiFab,
             body: Row(
               children: [
                 ColoredBox(
@@ -123,8 +362,8 @@ class _AppShellState extends State<AppShell> {
                           setState(() => _index = value),
                       extended: constraints.maxWidth >= 1100,
                       indicatorColor: const Color(0xFFF3F6FB),
-                      selectedIconTheme:
-                          const IconThemeData(color: AppColors.primary, size: 22),
+                      selectedIconTheme: const IconThemeData(
+                          color: AppColors.primary, size: 22),
                       unselectedIconTheme:
                           const IconThemeData(color: AppColors.muted, size: 22),
                       selectedLabelTextStyle: const TextStyle(
@@ -163,6 +402,7 @@ class _AppShellState extends State<AppShell> {
         return Scaffold(
           backgroundColor: AppColors.background,
           body: content,
+          floatingActionButton: aiFab,
           bottomNavigationBar: _MinimalBottomBar(
             items: _items,
             selectedIndex: _index,
@@ -263,20 +503,15 @@ class _BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          Icons.psychology_alt_rounded,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        const SizedBox(width: 8),
-        if (MediaQuery.sizeOf(context).width >= 1100)
-          const Text(
-            'Job Sensei',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-          ),
-      ],
+    final extended = MediaQuery.sizeOf(context).width >= 1100;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Image.asset(
+        'assets/logos/logo.png',
+        height: extended ? 28 : 22,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+      ),
     );
   }
 }

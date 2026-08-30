@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../app/injector.dart';
 import '../../../../app/router.dart';
+import '../../../../app/shell_tabs.dart';
 import '../../../../shared/models/career_profile_models.dart';
 import '../../data/repositories/in_memory_career_profile_repository.dart';
 import '../../domain/repositories/career_profile_repository.dart';
@@ -80,7 +82,9 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
     final ok = await write();
     if (!mounted) return;
     _showMessage(
-      ok ? successMessage : (_controller.errorMessage ?? 'Something went wrong.'),
+      ok
+          ? successMessage
+          : (_controller.errorMessage ?? 'Something went wrong.'),
       isError: !ok,
     );
   }
@@ -116,7 +120,8 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
     if (profile == null) return;
     final draft = await EditBasicsSheet.show(context, profile);
     if (draft == null || !mounted) return;
-    await _commit(() => _controller.saveBasics(draft), 'Profile details saved.');
+    await _commit(
+        () => _controller.saveBasics(draft), 'Profile details saved.');
   }
 
   Future<void> _editPreferences() async {
@@ -195,7 +200,8 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
   Future<void> _upsertExperience({WorkExperience? entry}) async {
     final result = await EditExperienceSheet.show(context, entry: entry);
     if (result == null || !mounted) return;
-    await _commit(() => _controller.saveExperience(result), 'Experience saved.');
+    await _commit(
+        () => _controller.saveExperience(result), 'Experience saved.');
   }
 
   Future<void> _manageSkills() {
@@ -306,6 +312,47 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
     if (mounted) await _controller.load();
   }
 
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text('You can sign back in anytime to continue.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await Injector.authService().logout();
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      AppRouter.home,
+      (route) => false,
+    );
+  }
+
+  Widget _accountSection() {
+    return ProfileCard(
+      icon: Icons.manage_accounts_outlined,
+      title: 'Account',
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: _logout,
+          icon: const Icon(Icons.logout_rounded),
+          label: const Text('Log out'),
+        ),
+      ),
+    );
+  }
   /* ----------------------------------------------------------- build --- */
 
   @override
@@ -316,7 +363,11 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
       backgroundColor: ProfileDesign.canvas,
       body: SafeArea(
         bottom: false,
-        child: switch ((_controller.isLoading, profile, _controller.errorMessage)) {
+        child: switch ((
+          _controller.isLoading,
+          profile,
+          _controller.errorMessage
+        )) {
           (_, final CareerProfile p, _) => _buildContent(p),
           (_, null, final String error) => _ErrorState(
               message: error,
@@ -390,9 +441,13 @@ class _CareerProfileScreenState extends State<CareerProfileScreen> {
       ProfilePowersStrip(
         onJobMatching: () => _goTo(AppRouter.jobs),
         onResumeSuggestions: () => _goTo(AppRouter.resumes),
-        onSkillGap: () => _goTo(AppRouter.skillGap),
+        onSkillGap: () {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          ShellTabs.openLearn();
+        },
       ),
       ProfileCta(onTap: _editBasics),
+      _accountSection(),
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

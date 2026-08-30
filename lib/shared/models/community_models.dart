@@ -1,8 +1,31 @@
 import 'dart:typed_data';
 
-enum CommunityPrivacy { public, private }
+enum CommunityPrivacy { public }
 
 enum AttachmentKind { image, document }
+
+class CommunityMember {
+  const CommunityMember({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.role,
+  });
+
+  factory CommunityMember.fromJson(Map<String, dynamic> json) {
+    return CommunityMember(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? 'Community member',
+      email: json['email'] as String? ?? '',
+      role: json['role'] as String? ?? 'seeker',
+    );
+  }
+
+  final String id;
+  final String name;
+  final String email;
+  final String role;
+}
 
 class CommunityGroup {
   const CommunityGroup({
@@ -16,6 +39,8 @@ class CommunityGroup {
     required this.createdById,
     required this.createdAt,
     this.isJoined = false,
+    this.isOwner = false,
+    this.members = const [],
   });
 
   factory CommunityGroup.fromJson(Map<String, dynamic> json) {
@@ -26,13 +51,15 @@ class CommunityGroup {
       category: json['category'] as String? ?? '',
       visualKey: json['visualKey'] as String? ?? 'code',
       memberCount: (json['memberCount'] as num?)?.toInt() ?? 0,
-      privacy: json['privacy'] == 'private'
-          ? CommunityPrivacy.private
-          : CommunityPrivacy.public,
+      privacy: CommunityPrivacy.public,
       createdById: json['createdById'] as String? ?? '',
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
           DateTime.now(),
       isJoined: json['isJoined'] == true,
+      isOwner: json['isOwner'] == true,
+      members: (json['members'] as List<dynamic>? ?? [])
+          .map((item) => CommunityMember.fromJson(item as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -46,10 +73,14 @@ class CommunityGroup {
   final String createdById;
   final DateTime createdAt;
   final bool isJoined;
+  final bool isOwner;
+  final List<CommunityMember> members;
 
   CommunityGroup copyWith({
     int? memberCount,
     bool? isJoined,
+    bool? isOwner,
+    List<CommunityMember>? members,
   }) {
     return CommunityGroup(
       id: id,
@@ -62,6 +93,8 @@ class CommunityGroup {
       createdById: createdById,
       createdAt: createdAt,
       isJoined: isJoined ?? this.isJoined,
+      isOwner: isOwner ?? this.isOwner,
+      members: members ?? this.members,
     );
   }
 }
@@ -74,6 +107,7 @@ class CommunityAttachment {
     required this.sizeBytes,
     this.url,
     this.localPath,
+    this.bytes,
   });
 
   factory CommunityAttachment.fromJson(Map<String, dynamic> json) {
@@ -95,6 +129,9 @@ class CommunityAttachment {
   final int sizeBytes;
   final String? url;
   final String? localPath;
+  final Uint8List? bytes;
+
+  bool get isImage => kind == AttachmentKind.image;
 }
 
 /// A local attachment waiting to be uploaded by a repository implementation.
@@ -125,6 +162,7 @@ class CommunityComment {
     required this.author,
     required this.body,
     required this.createdAt,
+    this.parentCommentId,
   });
 
   factory CommunityComment.fromJson(Map<String, dynamic> json) {
@@ -133,6 +171,7 @@ class CommunityComment {
       authorId: json['authorId'] as String? ?? '',
       author: json['author'] as String? ?? '',
       body: json['body'] as String? ?? '',
+      parentCommentId: json['parentCommentId'] as String?,
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
           DateTime.now(),
     );
@@ -143,6 +182,7 @@ class CommunityComment {
   final String author;
   final String body;
   final DateTime createdAt;
+  final String? parentCommentId;
 }
 
 class CommunityPost {
@@ -179,8 +219,8 @@ class CommunityPost {
               CommunityAttachment.fromJson(item as Map<String, dynamic>))
           .toList(),
       comments: (json['comments'] as List<dynamic>? ?? [])
-          .map((item) =>
-              CommunityComment.fromJson(item as Map<String, dynamic>))
+          .map(
+              (item) => CommunityComment.fromJson(item as Map<String, dynamic>))
           .toList(),
       likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
       commentCount: (json['commentCount'] as num?)?.toInt() ?? 0,
@@ -235,14 +275,12 @@ class CreateCommunityRequest {
     required this.name,
     required this.description,
     required this.category,
-    required this.privacy,
     required this.visualKey,
   });
 
   final String name;
   final String description;
   final String category;
-  final CommunityPrivacy privacy;
   final String visualKey;
 }
 

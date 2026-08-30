@@ -1,5 +1,4 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../../../core/media/app_image_picker.dart';
 import '../../../../shared/models/community_models.dart';
@@ -31,7 +30,7 @@ class FilePickerAttachmentService implements AttachmentPickerService {
       allowMultiple: true,
       type: FileType.custom,
       allowedExtensions: const ['pdf', 'doc', 'docx', 'txt', 'ppt', 'pptx'],
-      withData: kIsWeb,
+      withData: true,
     );
     if (result == null) return const [];
 

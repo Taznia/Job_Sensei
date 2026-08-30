@@ -20,7 +20,6 @@ class ApiCareerProfileRepository implements CareerProfileRepository {
       : _client = client ?? DioClient();
 
   final DioClient _client;
-
   static const _base = '/career-profile/me';
 
   /// Path segments the API accepts for `:section`.
