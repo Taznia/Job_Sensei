@@ -12,6 +12,7 @@ import * as communities from '../controllers/communities.controller.js';
 import * as files from '../controllers/files.controller.js';
 import * as jobs from '../controllers/jobs.controller.js';
 import * as jobImport from '../controllers/jobImport.controller.js';
+import * as jobMatch from '../controllers/jobMatch.controller.js';
 import * as jobSearch from '../controllers/jobSearch.controller.js';
 import * as learning from '../controllers/learning.controller.js';
 import * as learningProgress from '../controllers/learningProgress.controller.js';
@@ -65,6 +66,15 @@ api.get('/jobs/saved', requireAuth, jobs.savedJobs);
 api.get('/jobs/search', optionalAuth, validate(jobSearch.searchJobsSchema), jobSearch.searchJobs);
 api.get('/jobs/search/filters', jobSearch.getFilterOptions);
 
+// Module 4 job match scoring (22301190). /jobs/match/top sits above
+// /jobs/:id so "match" is not read as a job id.
+api.get(
+  '/jobs/match/top',
+  requireAuth,
+  validate(jobMatch.matchTopJobsSchema),
+  jobMatch.matchTopJobs,
+);
+
 // Module 2 job import (22301190). Both sit above /jobs/:id so "import" is not
 // matched as a job id. Triggering writes to the shared collection, so it is
 // limited to admins and recruiters; the status is read-only.
@@ -80,6 +90,12 @@ api.post(
 // Skill gap endpoint (incoming change)
 api.post('/jobs/:id/skill-gap', requireAuth, requireRole('seeker'), jobs.skillGapForJob);
 api.get('/jobs/:id', optionalAuth, jobs.getJob);
+api.get(
+  '/jobs/:id/match',
+  requireAuth,
+  validate(jobMatch.matchJobSchema),
+  jobMatch.matchJob,
+);
 api.post('/jobs/:id/save', requireAuth, jobs.saveJob);
 api.delete('/jobs/:id/save', requireAuth, jobs.unsaveJob);
 api.post(

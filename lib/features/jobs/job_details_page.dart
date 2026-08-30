@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../app/injector.dart';
 import '../../app/router.dart';
-import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_widgets.dart';
 import 'data/job_api_repository.dart';
 import 'job_models.dart';
+import 'widgets/job_match_card.dart';
 
 class JobDetailsPage extends StatefulWidget {
   const JobDetailsPage({super.key, required this.job, this.repository});
@@ -20,22 +20,9 @@ class JobDetailsPage extends StatefulWidget {
 class _JobDetailsPageState extends State<JobDetailsPage> {
   late final JobRepository _repository =
       widget.repository ?? ApiJobRepository();
-  late final Future<JobSkillGapAnalysis> _analysis = _loadAnalysis();
   bool get _isSeeker =>
       Injector.authService().currentUser?.role == 'seeker' ||
       Injector.authService().currentUser == null;
-
-  Future<JobSkillGapAnalysis> _loadAnalysis() async {
-    try {
-      return await _repository.skillGap(widget.job);
-    } catch (_) {
-      return JobSkillGapAnalysis(
-        job: widget.job,
-        strongSkills: const [],
-        missingSkills: widget.job.requiredSkills,
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,18 +54,9 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
             const SizedBox(height: 26),
             const SectionTitle('Job Match'),
             const SizedBox(height: 10),
-            FutureBuilder<JobSkillGapAnalysis>(
-              future: _analysis,
-              builder: (context, snapshot) {
-                if (!snapshot.hasData)
-                  return snapshot.hasError
-                      ? const EmptyState(
-                          icon: Icons.cloud_off_rounded,
-                          title: 'Match unavailable',
-                          message: 'The backend could not analyze this job.')
-                      : const Center(child: CircularProgressIndicator());
-                return _MatchCard(analysis: snapshot.data!);
-              },
+            JobMatchCard(
+              job: widget.job,
+              repository: _repository,
             ),
             const SizedBox(height: 24),
             OutlinedButton.icon(
@@ -105,43 +83,4 @@ class _JobDetailsPageState extends State<JobDetailsPage> {
       ),
     );
   }
-}
-
-class _MatchCard extends StatelessWidget {
-  const _MatchCard({required this.analysis});
-  final JobSkillGapAnalysis analysis;
-  @override
-  Widget build(BuildContext context) => Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-          gradient:
-              const LinearGradient(colors: [AppColors.primary, AppColors.cyan]),
-          borderRadius: BorderRadius.circular(20)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('${analysis.matchPercent}% Match',
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
-                ?.copyWith(color: Colors.white, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 6),
-        const Text('Based on your backend Career Profile skills',
-            style: TextStyle(color: Colors.white70)),
-        if (analysis.strongSkills.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          const Text('Strong skills',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: analysis.strongSkills
-                  .map((skill) => Chip(
-                      avatar: const Icon(Icons.check_circle_rounded,
-                          size: 16, color: AppColors.success),
-                      label: Text(skill.name),
-                      backgroundColor: Colors.white))
-                  .toList())
-        ]
-      ]));
 }

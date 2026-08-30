@@ -195,14 +195,9 @@ class _NavItem {
 class _AppShellState extends State<AppShell> {
   int _index = 0;
 
-  // Order matches _screens below; the shell renders both from the same index.
-  static const _items = <_NavItem>[
-    _NavItem('Community', Icons.groups_2_outlined, Icons.groups_2_rounded),
-    _NavItem('AI Sensei', Icons.auto_awesome_outlined, Icons.auto_awesome_rounded),
-    _NavItem('Skill Gap', Icons.donut_large_outlined, Icons.donut_large_rounded),
-    _NavItem('Learn', Icons.school_outlined, Icons.school_rounded),
-    _NavItem('Profile', Icons.person_outline_rounded, Icons.person_rounded),
-  ];
+  // Assigned per user role in initState, alongside _screens: recruiters,
+  // admins and seekers get different tabs from the same shell.
+  late final List<_NavItem> _items;
 
   late final List<Widget> _screens;
 

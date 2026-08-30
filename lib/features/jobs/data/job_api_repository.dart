@@ -2,10 +2,23 @@ import '../../../services/job_service.dart';
 import '../../../shared/models/career_profile_models.dart';
 import '../../../shared/models/learning_models.dart';
 import '../job_models.dart';
+import '../job_search_models.dart';
 
 abstract interface class JobRepository {
   Future<List<JobPosting>> listJobs({String? query});
   Future<JobSkillGapAnalysis> skillGap(JobPosting job);
+
+  /// Module 3: filtered, ranked search.
+  Future<JobSearchResult> searchJobs(JobSearchQuery query);
+
+  /// Module 3: values the filter sheet may offer.
+  Future<JobFilterOptions> filterOptions();
+
+  /// Module 3: bookmark a job for later review.
+  Future<void> setSaved(String jobId, {required bool saved});
+
+  /// Module 4: how well the signed-in user fits this job.
+  Future<JobMatchScore> matchScore(String jobId, {String? resumeId});
 }
 
 class ApiJobRepository implements JobRepository {
@@ -45,6 +58,72 @@ class ApiJobRepository implements JobRepository {
         strongSkills: matched,
         strongSkillDetails: details,
         missingSkills: missing);
+  }
+
+
+  @override
+  Future<JobSearchResult> searchJobs(JobSearchQuery query) async {
+    final response = await _service.search(query.toQueryParameters());
+    final items = response['items'] as List<dynamic>? ?? const [];
+    return JobSearchResult(
+      total: (response['total'] as num?)?.round() ?? 0,
+      page: (response['page'] as num?)?.round() ?? 1,
+      pages: (response['pages'] as num?)?.round() ?? 1,
+      sort: (response['sort'] ?? 'relevance').toString(),
+      jobs: items
+          .map((item) => _searchJobFromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  @override
+  Future<JobFilterOptions> filterOptions() async {
+    return JobFilterOptions.fromJson(await _service.filterOptions());
+  }
+
+  @override
+  Future<void> setSaved(String jobId, {required bool saved}) {
+    return saved ? _service.save(jobId) : _service.unsave(jobId);
+  }
+
+  @override
+  Future<JobMatchScore> matchScore(String jobId, {String? resumeId}) async {
+    return JobMatchScore.fromJson(
+      await _service.match(jobId, resumeId: resumeId),
+    );
+  }
+
+  /// The search endpoint returns more than the plain listing does, so it gets
+  /// its own mapper rather than widening [_jobFromJson], which other callers
+  /// still use against the simpler shape.
+  static JobPosting _searchJobFromJson(Map<String, dynamic> json) {
+    final names = json['skills'] as List<dynamic>? ?? const [];
+    return JobPosting(
+      id: json['id'] as String,
+      title: json['title'] as String? ?? 'Untitled role',
+      company: json['company'] as String? ?? 'Unknown company',
+      location: json['location'] as String? ?? 'Not specified',
+      type: _label(json['type'] as String? ?? 'full-time'),
+      workMode: _label(json['workMode'] as String? ?? 'onsite'),
+      description: json['description'] as String? ?? '',
+      requiredSkills: names
+          .map((name) => JobSkillRequirement(
+                id: name.toString().toLowerCase(),
+                name: name.toString(),
+                category: 'TECHNICAL',
+                priority: SkillPriority.high,
+                reason: '${name.toString()} is listed as a requirement for this role.',
+              ))
+          .toList(),
+      experienceLevel: json['experienceLevel'] as String?,
+      salaryMin: (json['salaryMin'] as num?)?.round(),
+      salaryMax: (json['salaryMax'] as num?)?.round(),
+      currency: json['currency'] as String?,
+      isSaved: json['isSaved'] == true,
+      postedAt: DateTime.tryParse(json['postedAt']?.toString() ?? '')?.toLocal(),
+      sourceLink: json['sourceLink'] as String?,
+      source: json['source'] as String?,
+    );
   }
 
   static JobPosting _jobFromJson(Map<String, dynamic> json) {

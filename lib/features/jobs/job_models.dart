@@ -24,15 +24,25 @@ class JobSkillRequirement {
 }
 
 class JobPosting {
-  const JobPosting(
-      {required this.id,
-      required this.title,
-      required this.company,
-      required this.location,
-      required this.type,
-      required this.workMode,
-      required this.description,
-      required this.requiredSkills});
+  const JobPosting({
+    required this.id,
+    required this.title,
+    required this.company,
+    required this.location,
+    required this.type,
+    required this.workMode,
+    required this.description,
+    required this.requiredSkills,
+    this.experienceLevel,
+    this.salaryMin,
+    this.salaryMax,
+    this.currency,
+    this.isSaved = false,
+    this.postedAt,
+    this.sourceLink,
+    this.source,
+  });
+
   final String id;
   final String title;
   final String company;
@@ -41,6 +51,56 @@ class JobPosting {
   final String workMode;
   final String description;
   final List<JobSkillRequirement> requiredSkills;
+
+  // Added for Module 3 job search. All optional so the listing endpoint, which
+  // does not return them, keeps working unchanged.
+  final String? experienceLevel;
+  final int? salaryMin;
+  final int? salaryMax;
+  final String? currency;
+
+  /// Whether the signed-in user has bookmarked this job.
+  final bool isSaved;
+  final DateTime? postedAt;
+
+  /// Set on listings imported from a public board (Module 2).
+  final String? sourceLink;
+  final String? source;
+
+  bool get isImported => source != null && source != 'internal';
+
+  /// "BDT 70k – 110k", or null when the listing states no pay.
+  String? get salaryLabel {
+    if (salaryMin == null && salaryMax == null) return null;
+    String short(int v) =>
+        v >= 1000 ? '${(v / 1000).toStringAsFixed(v % 1000 == 0 ? 0 : 1)}k' : '$v';
+    final unit = currency ?? '';
+    if (salaryMin != null && salaryMax != null && salaryMin != salaryMax) {
+      return '$unit ${short(salaryMin!)} – ${short(salaryMax!)}'.trim();
+    }
+    return '$unit ${short(salaryMax ?? salaryMin!)}'.trim();
+  }
+
+  JobPosting copyWith({bool? isSaved}) {
+    return JobPosting(
+      id: id,
+      title: title,
+      company: company,
+      location: location,
+      type: type,
+      workMode: workMode,
+      description: description,
+      requiredSkills: requiredSkills,
+      experienceLevel: experienceLevel,
+      salaryMin: salaryMin,
+      salaryMax: salaryMax,
+      currency: currency,
+      isSaved: isSaved ?? this.isSaved,
+      postedAt: postedAt,
+      sourceLink: sourceLink,
+      source: source,
+    );
+  }
 }
 
 class JobSkillMatch {

@@ -197,6 +197,71 @@ the phone and it is in Atlas.
 
 ---
 
+## Demo script — Adreed's four modules
+
+Sign in first (`demo@jobsensei.app` / `Demo123!`). Everything below reads and
+writes the live Atlas database, so an edit on the phone is really stored.
+
+### Module 1 — Career Profile · the **Profile** tab
+
+Education, work experience, preferred roles, location, expected salary,
+skills, certifications, portfolio links and career goals.
+
+- The ring at the top is a weighted completeness score, not a field count —
+  skills and job preferences carry the most because matching reads them
+  directly.
+- Tap **Edit** on any section to add, edit or delete entries.
+- Add a skill and watch the ring and the "+N more" chip both change.
+
+### Module 2 — Job import · run once before the demo
+
+```
+npm run import:jobs
+```
+
+Pulls real listings from the Remotive and Arbeitnow public APIs, normalises
+them onto our schema, and upserts by `(source, externalId)` so re-running
+updates rather than duplicates. Imported jobs then appear in the Jobs tab
+alongside internal ones, tagged **via Remotive** / **via Arbeitnow**.
+
+Check what is stored at any time:
+
+```
+http://127.0.0.1:1190/api/jobs/import/status
+```
+
+### Module 3 — Job Search · the **Jobs** tab
+
+Filtering happens on the server, so a filter applies to the whole collection
+rather than to the page already downloaded.
+
+- Type in the search box — results are ranked by relevance, and the header
+  count updates.
+- Tap **Filters** for company, location, skills, job type, working
+  arrangement, experience level, and salary range. The button shows how many
+  are active.
+- Worth calling out: salary matches on **overlap**, so a 90k–140k job still
+  appears when you ask for 100k and up.
+- Change the sort to **Highest pay** or **Newest**.
+- Tap the bookmark icon to save a job for later.
+
+### Module 4 — Job Match Score · open any job from the Jobs tab
+
+Compares the career profile, and the selected resume when there is one,
+against that job's requirements.
+
+- The ring gives an overall score and a verdict (Strong / Good / Fair / Low).
+- **How this score is made up** breaks it into Skills, Experience,
+  Preferences and Education, each with a plain-English reason. That is what
+  makes the number accountable rather than an assertion.
+- It deliberately gives **no learning recommendations** — that is the
+  skill-gap feature, reached from the "Analyze Skills in Learn" button below.
+
+> A good moment to show the modules connecting: edit the profile (Module 1),
+> then reopen a job and watch the match score (Module 4) move.
+
+---
+
 ## Troubleshooting
 
 **"Could not reach the Job Sensei API at …"**
