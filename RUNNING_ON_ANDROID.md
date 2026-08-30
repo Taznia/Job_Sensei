@@ -9,6 +9,28 @@ and it is what most of this page is about.
 
 ---
 
+## 0. Check the machine first
+
+Before anything else, and again right before you present:
+
+```
+node tool/preflight.mjs
+```
+
+It checks every part of the chain that differs between machines — Node and
+Flutter versions, `backend/.env`, DNS, the database connection, whether the
+jobs collection has anything in it, the port, the phone, and the `adb reverse`
+mapping — and names the one that is broken instead of leaving you to guess
+from a connection error.
+
+**FAIL** lines stop the app working. **WARN** lines usually just mean
+something is not started yet, like the server.
+
+It has no dependencies of its own, so it runs on a fresh clone before anything
+is installed.
+
+---
+
 ## 1. Phone setup (once)
 
 On the phone: **Settings → About phone → tap "Build number" seven times** to
