@@ -13,6 +13,8 @@ import 'package:jobsensei_frontend/features/jobs/jobs_page.dart';
 class _FakeJobRepository implements JobRepository {
   JobSearchQuery? lastQuery;
   int savedCalls = 0;
+  int importCalls = 0;
+  int searchCalls = 0;
 
   @override
   Future<List<JobPosting>> listJobs({String? query}) async => demoJobs;
@@ -20,6 +22,7 @@ class _FakeJobRepository implements JobRepository {
   @override
   Future<JobSearchResult> searchJobs(JobSearchQuery query) async {
     lastQuery = query;
+    searchCalls++;
     return JobSearchResult(
       total: demoJobs.length,
       page: 1,
@@ -64,6 +67,18 @@ class _FakeJobRepository implements JobRepository {
       ],
       matchedSkills: ['Flutter', 'Dart'],
       skillsNotEvidenced: 1,
+    );
+  }
+
+  @override
+  Future<JobImportResult> importJobs({int limit = 40}) async {
+    importCalls++;
+    return const JobImportResult(
+      created: 5,
+      updated: 2,
+      skipped: 0,
+      partial: false,
+      failedSources: [],
     );
   }
 
@@ -152,5 +167,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.savedCalls, 1);
+  });
+  testWidgets('the refresh control re-runs the search', (tester) async {
+    final repository = _FakeJobRepository();
+    await tester.pumpWidget(
+      MaterialApp(home: JobsPage(repository: repository)),
+    );
+    await tester.pumpAndSettle();
+
+    final initial = repository.searchCalls;
+
+    // Signed out, so the import action is hidden and this is a plain refresh.
+    await tester.tap(find.byTooltip('Refresh results'));
+    await tester.pumpAndSettle();
+
+    expect(repository.searchCalls, initial + 1);
+    expect(repository.importCalls, 0);
   });
 }

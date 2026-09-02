@@ -54,6 +54,14 @@ class JobService {
     }) as Map<String, dynamic>;
   }
 
+  /// Module 2: pull fresh listings from the public job boards. Restricted to
+  /// recruiters and admins server-side, because it writes to the shared job
+  /// collection and calls third-party APIs.
+  Future<Map<String, dynamic>> importJobs({int limit = 40}) async {
+    return await _client.post('/jobs/import', data: {'limit': limit})
+        as Map<String, dynamic>;
+  }
+
   /// The best-fitting jobs for the signed-in user, ranked.
   Future<Map<String, dynamic>> topMatches({int limit = 5}) async {
     return await _client.get('/jobs/match/top', query: {'limit': limit})

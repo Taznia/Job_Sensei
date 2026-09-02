@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../app/injector.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/widgets/app_widgets.dart';
@@ -48,6 +49,7 @@ class _JobsPageState extends State<JobsPage> {
   /// looks live is worse than an empty list.
   bool _usingSampleData = false;
   bool _loadingMore = false;
+  bool _importing = false;
   String? _error;
 
   @override
@@ -123,6 +125,42 @@ class _JobsPageState extends State<JobsPage> {
           _error = message;
         }
       });
+  }
+
+  /// The import writes to the shared job collection and calls third-party
+  /// APIs, so the server restricts it to recruiters and admins. Offering the
+  /// action to a seeker would only earn them a 403.
+  bool get _canImport {
+    final role = Injector.authService().currentUser?.role;
+    return role == 'recruiter' || role == 'admin';
+  }
+
+  /// Pulls fresh listings from Remotive and Arbeitnow, then re-runs the
+  /// current search so new rows appear without losing the active filters.
+  Future<void> _importJobs() async {
+    if (_importing) return;
+    setState(() => _importing = true);
+    _toast('Importing from the job boards…');
+    try {
+      final result = await _repository.importJobs();
+      if (!mounted) return;
+      setState(() => _importing = false);
+      await _search(showSpinner: false);
+      _toast(result.summary, isError: result.partial);
+    } on AppException catch (error) {
+      if (!mounted) return;
+      setState(() => _importing = false);
+      _toast(
+        error.statusCode == 403
+            ? 'Only a recruiter or admin account can import jobs.'
+            : error.message,
+        isError: true,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _importing = false);
+      _toast('Could not reach the job boards.', isError: true);
+    }
   }
 
   /// Appends the next page rather than replacing, so the list grows.
@@ -285,6 +323,9 @@ class _JobsPageState extends State<JobsPage> {
                 sort: _query.sort,
                 onFilters: _openFilters,
                 onSort: _changeSort,
+                importing: _importing,
+                onRefresh: () => _search(showSpinner: false),
+                onImport: _canImport ? _importJobs : null,
               ),
               const SizedBox(height: 12),
               _ResultHeader(
@@ -420,12 +461,20 @@ class _ControlBar extends StatelessWidget {
     required this.sort,
     required this.onFilters,
     required this.onSort,
+    required this.importing,
+    required this.onRefresh,
+    this.onImport,
   });
 
   final int activeFilters;
   final String sort;
   final VoidCallback onFilters;
   final ValueChanged<String> onSort;
+  final bool importing;
+  final VoidCallback onRefresh;
+
+  /// Null for accounts that may not import; the button then only refreshes.
+  final VoidCallback? onImport;
 
   static const _sorts = {
     'relevance': 'Most relevant',
@@ -487,7 +536,102 @@ class _ControlBar extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(width: 10),
+        _RefreshControl(
+          importing: importing,
+          onRefresh: onRefresh,
+          onImport: onImport,
+        ),
       ],
+    );
+  }
+}
+
+/// Refreshes the list, and for a recruiter or admin also offers a fresh pull
+/// from the public job boards (Module 2). A plain tap always just refreshes,
+/// so the common action stays one tap for everyone.
+class _RefreshControl extends StatelessWidget {
+  const _RefreshControl({
+    required this.importing,
+    required this.onRefresh,
+    this.onImport,
+  });
+
+  final bool importing;
+  final VoidCallback onRefresh;
+  final VoidCallback? onImport;
+
+  @override
+  Widget build(BuildContext context) {
+    final decoration = BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(color: AppColors.border),
+    );
+
+    if (importing) {
+      return Container(
+        width: 46,
+        height: 46,
+        decoration: decoration,
+        padding: const EdgeInsets.all(13),
+        child: const CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    // Seekers get a plain refresh; there is no second action to choose from.
+    if (onImport == null) {
+      return Container(
+        width: 46,
+        height: 46,
+        decoration: decoration,
+        child: IconButton(
+          onPressed: onRefresh,
+          tooltip: 'Refresh results',
+          icon: const Icon(Icons.refresh_rounded, size: 20),
+          color: AppColors.ink,
+        ),
+      );
+    }
+
+    return Container(
+      width: 46,
+      height: 46,
+      decoration: decoration,
+      child: PopupMenuButton<String>(
+        tooltip: 'Refresh or import',
+        icon: const Icon(Icons.refresh_rounded, size: 20, color: AppColors.ink),
+        position: PopupMenuPosition.under,
+        onSelected: (value) {
+          if (value == 'import') {
+            onImport!();
+          } else {
+            onRefresh();
+          }
+        },
+        itemBuilder: (context) => const [
+          PopupMenuItem(
+            value: 'refresh',
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.refresh_rounded, size: 20),
+              title: Text('Refresh results'),
+              subtitle: Text('Re-run this search'),
+            ),
+          ),
+          PopupMenuItem(
+            value: 'import',
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.cloud_download_outlined, size: 20),
+              title: Text('Import new jobs'),
+              subtitle: Text('Pull from Remotive and Arbeitnow'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

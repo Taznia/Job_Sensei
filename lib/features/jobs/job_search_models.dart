@@ -270,3 +270,59 @@ class JobMatchScore {
     );
   }
 }
+
+/* --------------------------------------------- Module 2: import result --- */
+
+/// Outcome of triggering an import from the public job boards.
+///
+/// Each board is reported separately, because one being unreachable should not
+/// hide the other's results.
+class JobImportResult {
+  const JobImportResult({
+    required this.created,
+    required this.updated,
+    required this.skipped,
+    required this.partial,
+    required this.failedSources,
+  });
+
+  final int created;
+  final int updated;
+  final int skipped;
+
+  /// True when at least one board failed.
+  final bool partial;
+  final List<String> failedSources;
+
+  factory JobImportResult.fromJson(Map<String, dynamic> json) {
+    final totals = json['totals'] is Map
+        ? Map<String, dynamic>.from(json['totals'] as Map)
+        : const <String, dynamic>{};
+    final sources = json['sources'] is List
+        ? (json['sources'] as List).whereType<Map>().toList()
+        : const <Map>[];
+
+    return JobImportResult(
+      created: (totals['created'] as num?)?.round() ?? 0,
+      updated: (totals['updated'] as num?)?.round() ?? 0,
+      skipped: (totals['skipped'] as num?)?.round() ?? 0,
+      partial: json['partial'] == true,
+      failedSources: sources
+          .where((s) => s['ok'] != true)
+          .map((s) => (s['source'] ?? 'unknown').toString())
+          .toList(),
+    );
+  }
+
+  /// One line fit for a snackbar.
+  String get summary {
+    final parts = <String>[];
+    if (created > 0) parts.add('$created new');
+    if (updated > 0) parts.add('$updated updated');
+    if (parts.isEmpty) parts.add('nothing new');
+
+    final base = 'Import finished — ${parts.join(', ')}.';
+    if (!partial) return base;
+    return '$base Could not reach: ${failedSources.join(', ')}.';
+  }
+}

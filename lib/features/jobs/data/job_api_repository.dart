@@ -19,6 +19,9 @@ abstract interface class JobRepository {
 
   /// Module 4: how well the signed-in user fits this job.
   Future<JobMatchScore> matchScore(String jobId, {String? resumeId});
+
+  /// Module 2: import fresh listings from the public job boards.
+  Future<JobImportResult> importJobs({int limit});
 }
 
 class ApiJobRepository implements JobRepository {
@@ -91,6 +94,11 @@ class ApiJobRepository implements JobRepository {
     return JobMatchScore.fromJson(
       await _service.match(jobId, resumeId: resumeId),
     );
+  }
+
+  @override
+  Future<JobImportResult> importJobs({int limit = 40}) async {
+    return JobImportResult.fromJson(await _service.importJobs(limit: limit));
   }
 
   /// The search endpoint returns more than the plain listing does, so it gets
