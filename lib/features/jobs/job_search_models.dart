@@ -284,6 +284,8 @@ class JobImportResult {
     required this.skipped,
     required this.partial,
     required this.failedSources,
+    this.alreadyFresh = false,
+    this.cooldownMinutes = 0,
   });
 
   final int created;
@@ -293,6 +295,11 @@ class JobImportResult {
   /// True when at least one board failed.
   final bool partial;
   final List<String> failedSources;
+
+  /// The server declined to call the boards because they were polled recently.
+  /// Not an error — the caller wanted fresh jobs and the jobs are fresh.
+  final bool alreadyFresh;
+  final int cooldownMinutes;
 
   factory JobImportResult.fromJson(Map<String, dynamic> json) {
     final totals = json['totals'] is Map
@@ -307,6 +314,8 @@ class JobImportResult {
       updated: (totals['updated'] as num?)?.round() ?? 0,
       skipped: (totals['skipped'] as num?)?.round() ?? 0,
       partial: json['partial'] == true,
+      alreadyFresh: json['skipped'] == true,
+      cooldownMinutes: (json['cooldownMinutes'] as num?)?.round() ?? 0,
       failedSources: sources
           .where((s) => s['ok'] != true)
           .map((s) => (s['source'] ?? 'unknown').toString())
@@ -316,6 +325,13 @@ class JobImportResult {
 
   /// One line fit for a snackbar.
   String get summary {
+    if (alreadyFresh) {
+      return cooldownMinutes > 0
+          ? 'Already up to date — the job boards were checked in the last '
+              '$cooldownMinutes minutes.'
+          : 'Already up to date.';
+    }
+
     final parts = <String>[];
     if (created > 0) parts.add('$created new');
     if (updated > 0) parts.add('$updated updated');

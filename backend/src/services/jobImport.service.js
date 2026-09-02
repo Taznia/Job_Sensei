@@ -19,6 +19,12 @@ const SOURCES = {
 const DEFAULT_LIMIT = 40;
 const REQUEST_TIMEOUT_MS = 20000;
 
+// Remotive and Arbeitnow are free APIs with a fair-use expectation, so the
+// cost of an import is an outbound call to each — not a permission concern.
+// A global cooldown lets any signed-in seeker ask for fresher jobs while
+// keeping the traffic we send the boards bounded, however many users tap it.
+const COOLDOWN_MS = 10 * 60 * 1000;
+
 /* --------------------------------------------------------------- helpers --- */
 
 /** Board descriptions arrive as HTML; the app renders plain text. */
@@ -192,6 +198,19 @@ function fromArbeitnow(job) {
 
 /* ---------------------------------------------------------------- import --- */
 
+/**
+ * When an imported listing was last written. Derived from the jobs themselves
+ * rather than stored separately, so it survives a restart and doesn't need a
+ * collection of its own.
+ */
+export async function lastImportAt() {
+  const newest = await Job.findOne({ source: { $ne: 'internal' } })
+    .sort({ updatedAt: -1 })
+    .select('updatedAt')
+    .lean();
+  return newest?.updatedAt ?? null;
+}
+
 async function loadSource(source, limit) {
   if (source === 'remotive') {
     const payload = await fetchJson(`${SOURCES.remotive}?limit=${limit}`);
@@ -214,7 +233,24 @@ async function loadSource(source, limit) {
 export async function importJobs({
   sources = Object.keys(SOURCES),
   limit = DEFAULT_LIMIT,
+  force = false,
 } = {}) {
+  const last = await lastImportAt();
+  const nextAllowedAt = last ? new Date(last.getTime() + COOLDOWN_MS) : null;
+
+  // Inside the cooldown this is a no-op rather than an error: the caller asked
+  // for fresh jobs and the jobs are already fresh, which is a success.
+  if (!force && nextAllowedAt && nextAllowedAt > new Date()) {
+    return {
+      skipped: true,
+      lastImportAt: last,
+      nextAllowedAt,
+      cooldownMinutes: Math.round(COOLDOWN_MS / 60000),
+      totals: { fetched: 0, created: 0, updated: 0, skipped: 0 },
+      sources: [],
+    };
+  }
+
   const results = [];
 
   for (const source of sources) {
@@ -268,7 +304,13 @@ export async function importJobs({
     { fetched: 0, created: 0, updated: 0, skipped: 0 },
   );
 
-  return { totals, sources: results };
+  return {
+    skipped: false,
+    lastImportAt: new Date(),
+    cooldownMinutes: Math.round(COOLDOWN_MS / 60000),
+    totals,
+    sources: results,
+  };
 }
 
 /** Counts of what is currently stored, grouped by where it came from. */
@@ -286,6 +328,8 @@ export async function importStatus() {
 
   return {
     available: Object.keys(SOURCES),
+    lastImportAt: await lastImportAt(),
+    cooldownMinutes: Math.round(COOLDOWN_MS / 60000),
     stored: rows.map((r) => ({
       source: r._id,
       count: r.count,

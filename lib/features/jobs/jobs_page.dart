@@ -127,13 +127,10 @@ class _JobsPageState extends State<JobsPage> {
       });
   }
 
-  /// The import writes to the shared job collection and calls third-party
-  /// APIs, so the server restricts it to recruiters and admins. Offering the
-  /// action to a seeker would only earn them a 403.
-  bool get _canImport {
-    final role = Injector.authService().currentUser?.role;
-    return role == 'recruiter' || role == 'admin';
-  }
+  /// Any signed-in user may ask for fresher listings — seekers most of all.
+  /// The server bounds how often the public boards are actually called, so
+  /// the limit is on frequency rather than on who may ask.
+  bool get _canImport => Injector.authService().currentUser != null;
 
   /// Pulls fresh listings from Remotive and Arbeitnow, then re-runs the
   /// current search so new rows appear without losing the active filters.

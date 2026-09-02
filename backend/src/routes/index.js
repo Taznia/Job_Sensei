@@ -82,7 +82,6 @@ api.get('/jobs/import/status', jobImport.getImportStatus);
 api.post(
   '/jobs/import',
   requireAuth,
-  requireRole('recruiter', 'admin'),
   validate(jobImport.runImportSchema),
   jobImport.runImport,
 );
