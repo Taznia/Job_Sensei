@@ -7,9 +7,17 @@ abstract final class AppConfig {
   static const _definedApiUrl = String.fromEnvironment('API_BASE_URL');
   static const _definedGeminiKey = String.fromEnvironment('GEMINI_API_KEY');
   static const _definedGeminiModel = String.fromEnvironment('GEMINI_MODEL');
-  static const _localApiFallback = String.fromEnvironment(
+  /// Where the app points when no explicit `API_BASE_URL` is supplied.
+  ///
+  /// This is the deployed backend, so a fresh clone — or a release build on a
+  /// physical phone — reaches real data with no flags and no laptop running.
+  /// For local backend work, override it:
+  ///   --dart-define=LOCAL_API_BASE_URL=http://127.0.0.1:1190/api
+  /// That path still gets the emulator's 10.0.2.2 rewrite, which is why the
+  /// override is kept separate from API_BASE_URL.
+  static const _fallbackApiBaseUrl = String.fromEnvironment(
     'LOCAL_API_BASE_URL',
-    defaultValue: 'http://localhost:5000/api',
+    defaultValue: 'https://job-sensei-backend.vercel.app/api',
   );
 
   static String _env(String key) => (dotenv.isInitialized ? dotenv.env[key] : null)?.trim() ?? '';
@@ -38,7 +46,7 @@ abstract final class AppConfig {
         ? fromDefine
         : fromFile.isNotEmpty
             ? fromFile
-            : _localApiFallback.trim();
+            : _fallbackApiBaseUrl.trim();
     return normalizeApiBaseUrl(raw);
   }
 
