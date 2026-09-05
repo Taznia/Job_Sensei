@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/injector.dart';
+import '../../app/router.dart';
 import '../../app/shell_tabs.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_widgets.dart';
@@ -143,6 +144,19 @@ class _SeekerHomePageState extends State<SeekerHomePage> {
               detail: 'Skills here drive job match and learning.',
               cta: 'Open Profile',
               onTap: ShellTabs.openProfile,
+            ),
+            const SizedBox(height: 12),
+            // The tracker is a pushed route rather than a tab, so it needs an
+            // entry point of its own; nothing else in the seeker shell links
+            // to it.
+            _ActionTile(
+              color: const Color(0xFF059669),
+              icon: Icons.fact_check_rounded,
+              title: 'Track applications',
+              detail: 'Log applications you made elsewhere and follow each stage.',
+              cta: 'Open Tracker',
+              onTap: () =>
+                  Navigator.of(context).pushNamed(AppRouter.applications),
             ),
           ],
         ),
