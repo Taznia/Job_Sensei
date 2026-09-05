@@ -4,6 +4,10 @@ import '../features/ai/data/services/ai_attachment_picker_service.dart';
 import '../features/ai/data/services/gemini_chat_service.dart';
 import '../features/ai/data/services/privacy_safe_chat_service.dart';
 import '../features/ai/domain/repositories/chat_history_repository.dart';
+import '../features/ai/data/repositories/api_resume_match_repository.dart';
+import '../features/ai/domain/repositories/resume_match_repository.dart';
+import '../features/applications/data/repositories/api_tracked_application_repository.dart';
+import '../features/applications/domain/repositories/tracked_application_repository.dart';
 import '../features/community/data/repositories/api_community_repository.dart';
 import '../features/community/domain/repositories/community_repository.dart';
 import '../features/learning/data/services/youtube_resource_service.dart';
@@ -11,6 +15,8 @@ import '../features/learning/data/repositories/learning_progress_repository.dart
 import '../services/auth_service.dart';
 import '../features/profile/data/repositories/api_career_profile_repository.dart';
 import '../features/profile/domain/repositories/career_profile_repository.dart';
+import '../features/resumes/data/repositories/api_resume_repository.dart';
+import '../features/resumes/domain/repositories/resume_repository.dart';
 
 /// A lightweight composition root. Replace with get_it or Riverpod if the
 /// larger team standardizes on a dependency-injection package.
@@ -45,4 +51,18 @@ abstract final class Injector {
       _learningProgress;
   static CareerProfileRepository careerProfileRepository() =>
       ApiCareerProfileRepository();
+
+  // --- Resume builder, tracker and AI Resume Match ------------------------
+  // Held as singletons so every screen shares one DioClient rather than each
+  // building its own interceptor stack.
+  static final ResumeRepository _resumes = ApiResumeRepository();
+  static ResumeRepository resumeRepository() => _resumes;
+
+  static final TrackedApplicationRepository _trackedApplications =
+      ApiTrackedApplicationRepository();
+  static TrackedApplicationRepository trackedApplicationRepository() =>
+      _trackedApplications;
+
+  static final ResumeMatchRepository _resumeMatch = ApiResumeMatchRepository();
+  static ResumeMatchRepository resumeMatchRepository() => _resumeMatch;
 }

@@ -28,8 +28,11 @@ class DioClient {
     return _send(() => _dio.get(path, queryParameters: query));
   }
 
-  Future<dynamic> post(String path, {Object? data}) {
-    return _send(() => _dio.post(path, data: data));
+  /// [options] is passed straight through, so a slow endpoint can raise its own
+  /// timeout without changing the client-wide default. Errors are still mapped
+  /// to [AppException] the same way as every other call.
+  Future<dynamic> post(String path, {Object? data, Options? options}) {
+    return _send(() => _dio.post(path, data: data, options: options));
   }
 
   Future<dynamic> patch(String path, {Object? data}) {
