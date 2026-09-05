@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../features/admin/admin_page.dart';
 import '../features/ai/presentation/screens/ai_chat_screen.dart';
+import '../features/ai/presentation/screens/resume_match_screen.dart';
 import '../features/ai/presentation/widgets/momo_fab.dart';
 import '../features/applications/applications_page.dart';
 import '../features/authentication/authentication_page.dart';
@@ -29,6 +30,7 @@ abstract final class AppRouter {
   static const resumes = '/resumes';
   static const applications = '/applications';
   static const ai = '/ai';
+  static const resumeMatch = '/resume-match';
   static const learning = '/learning';
   static const skillGap = '/skill-gap';
   static const community = '/community';
@@ -60,6 +62,10 @@ abstract final class AppRouter {
               historyRepository: Injector.chatHistoryRepository(),
               attachmentPicker: Injector.aiAttachmentPickerService(),
             ),
+          ),
+      resumeMatch => (_) => const _RoleGuard(
+            allowedRoles: {'seeker'},
+            child: ResumeMatchScreen(),
           ),
       learning => (_) {
           final argument = settings.arguments;
